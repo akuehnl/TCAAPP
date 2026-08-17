@@ -27,8 +27,15 @@ const notMemberSignOut = $("not-member-sign-out");
 const userEmailEl = $("user-email");
 const signOutBtn = $("sign-out-btn");
 
+const tabToday = $("tab-today");
 const tabAll = $("tab-all");
 const tabMine = $("tab-mine");
+
+const todayView = $("today-view");
+const boardView = $("board-view");
+const boardFilters = $("board-filters");
+const todayDateEl = $("today-date");
+const todayMembersEl = $("today-members");
 
 const newTaskBtn = $("new-task-btn");
 const hideDoneCheckbox = $("hide-done");
@@ -61,7 +68,7 @@ let members = [];
 let membersById = new Map();
 let currentMember = null;   // the signed-in user's roster row
 let editingId = null;       // null = creating a new task
-let currentView = "all";    // "all" | "mine"
+let currentView = "today";  // "today" | "all" | "mine"
 
 function showScreen(screen) {
   for (const el of [loadingEl, authScreen, notMemberScreen, todoScreen]) {
@@ -139,21 +146,96 @@ function formatNumber(value) {
   return String(Number(value));
 }
 
+function formatHours(value) {
+  const rounded = Math.round(value * 10) / 10;
+  return `${rounded}h`;
+}
+
+function daysFromToday(date) {
+  return Math.round((date - todayAtMidnight()) / 86400000);
+}
+
+// ---- Scheduling ----
+//
+// est_calendar_days is lead time, not effort: it's how long the task takes in
+// wall-clock terms once you account for waiting on other people. Subtracting
+// it from the due date gives the date work has to be underway by.
+//
+//   start_by   = due_date − est_calendar_days
+//   daily_load = est_work_hours ÷ est_calendar_days
+//
+// That's what separates "due soon" from "needs attention now". A task due in
+// five weeks with a four-week lead time is already late today.
+
+function startByDate(task) {
+  if (!task.due_date) return null;
+  const lead = Math.ceil(Number(task.est_calendar_days) || 0);
+  const start = parseDateOnly(task.due_date);
+  start.setDate(start.getDate() - lead);
+  return start;
+}
+
+// Hours per day this task demands while it's in flight.
+function dailyLoad(task) {
+  if (task.est_work_hours == null) return 0;
+  const days = Math.max(Math.ceil(Number(task.est_calendar_days) || 1), 1);
+  return Number(task.est_work_hours) / days;
+}
+
+// Which section of the Today page a task belongs in, or null if it isn't
+// today's problem yet.
+function todayBucket(task) {
+  if (task.is_complete) return null;
+  if (!task.due_date) return "undated";
+  if (isOverdue(task)) return "overdue";
+  return startByDate(task) <= todayAtMidnight() ? "active" : null;
+}
+
+// One line explaining why this task is on today's page.
+function scheduleNote(task, bucket) {
+  const bits = [];
+
+  if (bucket === "overdue") {
+    const late = -daysFromToday(parseDateOnly(task.due_date));
+    bits.push(`${late} day${late === 1 ? "" : "s"} overdue`);
+    bits.push(`was due ${formatDueDate(task.due_date)}`);
+  } else if (bucket === "active") {
+    const slack = daysFromToday(startByDate(task));
+    if (slack === 0) bits.push("Start today");
+    else bits.push(`${-slack} day${slack === -1 ? "" : "s"} past start date`);
+    bits.push(`due ${formatDueDate(task.due_date)}`);
+  } else {
+    bits.push("No due date");
+  }
+
+  const load = dailyLoad(task);
+  if (load > 0) bits.push(`${formatHours(load)}/day`);
+
+  return bits.join(" · ");
+}
+
 // ---- Views ----
 
 function setView(view) {
   currentView = view;
+  tabToday.classList.toggle("active", view === "today");
   tabAll.classList.toggle("active", view === "all");
   tabMine.classList.toggle("active", view === "mine");
+
+  todayView.classList.toggle("hidden", view !== "today");
+  boardView.classList.toggle("hidden", view === "today");
+  boardFilters.classList.toggle("hidden", view === "today");
   // The per-person filter is meaningless once the list is already narrowed.
   assigneeFilterWrap.classList.toggle("hidden", view === "mine");
-  renderTasks();
+
+  render();
 }
 
+tabToday.addEventListener("click", () => setView("today"));
 tabAll.addEventListener("click", () => setView("all"));
 tabMine.addEventListener("click", () => setView("mine"));
-assigneeFilter.addEventListener("change", renderTasks);
-hideDoneCheckbox.addEventListener("change", renderTasks);
+assigneeFilter.addEventListener("change", render);
+hideDoneCheckbox.addEventListener("change", render);
 
 function visibleTasks() {
   let list = tasks;
@@ -311,7 +393,7 @@ async function loadTasks() {
     return;
   }
   tasks = data;
-  renderTasks();
+  render();
   refreshLabelOptions();
 }
 
@@ -467,8 +549,175 @@ function updateTabCounts() {
   const mine = currentMember
     ? open.filter((t) => t.assignee_id === currentMember.id)
     : [];
+  const todayCount = open.filter((t) => {
+    const bucket = todayBucket(t);
+    return bucket === "overdue" || bucket === "active";
+  }).length;
+
+  tabToday.textContent = `Today (${todayCount})`;
   tabAll.textContent = `Shared board (${open.length})`;
   tabMine.textContent = `My tasks (${mine.length})`;
+}
+
+// ---- Today view ----
+
+// Compact row: checkbox, title, why-it's-here line.
+function renderTodayRow(task, bucket) {
+  const li = document.createElement("li");
+  li.className = "today-task" + (bucket === "overdue" ? " overdue" : "");
+
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = false;
+  checkbox.title = "Mark done";
+  checkbox.addEventListener("change", () => toggleStatus(task.id, checkbox.checked));
+
+  const body = document.createElement("div");
+  body.className = "today-task-body";
+
+  const titleRow = document.createElement("div");
+  titleRow.className = "title-row";
+
+  const title = document.createElement("span");
+  title.className = "task-title";
+  title.textContent = task.title;
+  titleRow.appendChild(title);
+
+  const priority = document.createElement("span");
+  priority.className = "badge priority-" + task.priority;
+  priority.textContent = PRIORITY_LABEL[task.priority] ?? task.priority;
+  titleRow.appendChild(priority);
+
+  if (task.project_label) {
+    const label = document.createElement("span");
+    label.className = "badge label-badge";
+    label.textContent = task.project_label;
+    titleRow.appendChild(label);
+  }
+
+  const note = document.createElement("div");
+  note.className = "today-note";
+  note.textContent = scheduleNote(task, bucket);
+
+  body.append(titleRow, note);
+
+  const editBtn = document.createElement("button");
+  editBtn.type = "button";
+  editBtn.className = "icon-btn";
+  editBtn.textContent = "Edit";
+  editBtn.addEventListener("click", () => openForm(task));
+
+  li.append(checkbox, body, editBtn);
+  return li;
+}
+
+function renderTodaySection(heading, list, modifier) {
+  if (!list.length) return null;
+
+  const wrap = document.createElement("div");
+  wrap.className = "today-section";
+
+  const title = document.createElement("h4");
+  title.className = "today-section-title " + modifier;
+  title.textContent = `${heading} (${list.length})`;
+  wrap.appendChild(title);
+
+  const ul = document.createElement("ul");
+  for (const { task, bucket } of list) ul.appendChild(renderTodayRow(task, bucket));
+  wrap.appendChild(ul);
+
+  return wrap;
+}
+
+function renderMemberCard(member, assigned) {
+  const buckets = { overdue: [], active: [], undated: [] };
+  for (const task of assigned) {
+    const bucket = todayBucket(task);
+    if (bucket) buckets[bucket].push({ task, bucket });
+  }
+
+  // Undated work has no schedule, so it doesn't count toward today's load.
+  const scheduled = [...buckets.overdue, ...buckets.active];
+  const load = scheduled.reduce((sum, { task }) => sum + dailyLoad(task), 0);
+  const capacity = Number(member.daily_capacity_hours) || 0;
+  const over = capacity > 0 && load > capacity;
+
+  const card = document.createElement("div");
+  card.className = "member-card";
+  if (!scheduled.length && !buckets.undated.length) card.classList.add("clear");
+
+  const head = document.createElement("div");
+  head.className = "member-head";
+
+  const who = document.createElement("div");
+  const name = document.createElement("span");
+  name.className = "member-name";
+  name.textContent = member.name;
+  who.appendChild(name);
+  if (member.role) {
+    const role = document.createElement("span");
+    role.className = "member-role";
+    role.textContent = member.role;
+    who.appendChild(role);
+  }
+
+  const loadEl = document.createElement("div");
+  loadEl.className = "member-load" + (over ? " over" : "");
+  loadEl.textContent = capacity > 0
+    ? `${formatHours(load)} of ${formatHours(capacity)}`
+    : formatHours(load);
+  if (over) loadEl.title = "Scheduled work exceeds this person's daily capacity";
+
+  head.append(who, loadEl);
+  card.appendChild(head);
+
+  if (capacity > 0) {
+    const bar = document.createElement("div");
+    bar.className = "load-bar";
+    const fill = document.createElement("div");
+    fill.className = "load-fill" + (over ? " over" : "");
+    fill.style.width = `${Math.min(load / capacity, 1) * 100}%`;
+    bar.appendChild(fill);
+    card.appendChild(bar);
+  }
+
+  const sections = [
+    renderTodaySection("Overdue", buckets.overdue, "danger"),
+    renderTodaySection("Needs work today", buckets.active, ""),
+    renderTodaySection("No due date", buckets.undated, "muted"),
+  ].filter(Boolean);
+
+  if (sections.length) {
+    for (const section of sections) card.appendChild(section);
+  } else {
+    const clear = document.createElement("p");
+    clear.className = "today-clear";
+    clear.textContent = "Nothing scheduled today.";
+    card.appendChild(clear);
+  }
+
+  return card;
+}
+
+function renderToday() {
+  todayDateEl.textContent = new Date().toLocaleDateString(undefined, {
+    weekday: "long", month: "long", day: "numeric",
+  });
+
+  todayMembersEl.innerHTML = "";
+
+  for (const member of members) {
+    const assigned = tasks.filter((t) => t.assignee_id === member.id);
+    todayMembersEl.appendChild(renderMemberCard(member, assigned));
+  }
+
+  // Unassigned work would otherwise be invisible on this page.
+  const orphans = tasks.filter((t) => !t.assignee_id && todayBucket(t));
+  if (orphans.length) {
+    todayMembersEl.appendChild(
+      renderMemberCard({ name: "Unassigned", role: null, daily_capacity_hours: 0 }, orphans)
+    );
+  }
 }
 
 function emptyMessage() {
@@ -482,7 +731,7 @@ function emptyMessage() {
   return "No open tasks. Uncheck “Hide done” to see completed ones.";
 }
 
-function renderTasks() {
+function renderBoard() {
   const visible = visibleTasks();
 
   taskList.innerHTML = "";
@@ -492,6 +741,11 @@ function renderTasks() {
 
   emptyState.classList.toggle("hidden", visible.length > 0);
   emptyState.textContent = emptyMessage();
+}
+
+function render() {
+  if (currentView === "today") renderToday();
+  else renderBoard();
   updateTabCounts();
 }
 

@@ -10,12 +10,36 @@ Live at **https://akuehnl.github.io/TCAAPP/**
 
 | View | Shows |
 | --- | --- |
-| **Shared board** | Every task on the board, with an Assignee filter (Anyone / Unassigned / any member) |
+| **Today** | Daily overview — every member's work for today on one page, overdue rolled in, with checkboxes to mark done |
+| **Shared board** | Every task, with an Assignee filter (Anyone / Unassigned / any member) |
 | **My tasks** | Only tasks assigned to the signed-in member |
 
-Tab labels carry live open-task counts. Both views sort open-first, then
-soonest due date (undated last), then priority. "Hide done" filters out
-completed tasks, and overdue tasks are outlined in red.
+Tab labels carry live counts. The list views sort open-first, then soonest due
+date (undated last), then priority. "Hide done" filters out completed tasks,
+and overdue tasks are outlined in red.
+
+## How the Today page decides what's due
+
+`est_calendar_days` is treated as **lead time**, not effort — how long the task
+takes in wall-clock terms once you account for waiting on other people.
+Subtracting it from the due date gives the date work has to be underway by:
+
+```
+start_by   = due_date − est_calendar_days
+daily_load = est_work_hours ÷ est_calendar_days
+```
+
+A task lands on the Today page when `today ≥ start_by`, which is a different
+question from "what's due soon". Ordering security cameras due Sep 20 with a
+35-day lead time is already late on Aug 17; a budget task due Aug 28 with a
+3-day lead time isn't due to start until Aug 25.
+
+Each member's `daily_load` is summed across their overdue and in-flight tasks
+and compared against `daily_capacity_hours` from the roster (seeded at 3h/day
+for high-bandwidth members, 1h/day for limited). Going over turns the bar red.
+
+Tasks with no due date can't produce a `start_by`, so they appear in a separate
+"No due date" bucket rather than disappearing, and don't count toward load.
 
 ## Board roster
 
@@ -59,6 +83,8 @@ Run these in the Supabase SQL Editor **in order**, once each:
    adds assignee, dates, priority, estimates, label, notes.
 3. [`supabase/migration-002-members-and-sharing.sql`](supabase/migration-002-members-and-sharing.sql) —
    adds the roster and switches RLS from private-per-user to shared-board.
+4. [`supabase/migration-003-capacity.sql`](supabase/migration-003-capacity.sql) —
+   adds per-member daily capacity for the Today page's overload flag.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key
 into [`config.js`](config.js), and in **Authentication → URL Configuration**
@@ -83,6 +109,9 @@ under repo **Settings → Pages**: deploy from branch `main`, folder `/ (root)`.
   Security policies, not by hiding the key. Never commit the database password
   or the `service_role` key.
 - The board syncs live across tabs and devices via Supabase Realtime.
-- Priority is manual (Phase 1). Auto-calculation from due date, work hours,
-  and calendar days is a possible Phase 2.
+- Priority is manual. The Today page derives urgency from lead time instead,
+  so priority acts as a manual tiebreaker rather than the main signal.
+- Still to build: a calendar view on the main board (plotting each task's
+  start-by → due span), and an Archive so completed tasks leave the active
+  list instead of accumulating.
 - Daily digest / overdue reminder emails were scoped out for now.

@@ -237,6 +237,125 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 .form-actions .message { margin-top: 0; }
 
+/* ---- Today view ---- */
+
+.today-date {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 16px;
+}
+
+#today-members {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.member-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.member-card.clear { opacity: 0.6; }
+
+.member-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.member-name { font-size: 15px; font-weight: 600; }
+
+.member-role {
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: 8px;
+}
+
+.member-load {
+  font-size: 13px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.member-load.over { color: var(--danger); font-weight: 600; }
+
+.load-bar {
+  height: 4px;
+  background: #ececf0;
+  border-radius: 2px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.load-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.load-fill.over { background: var(--danger); }
+
+.today-section { margin-top: 14px; }
+
+.today-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+
+.today-section-title.danger { color: var(--danger); }
+
+.today-section ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.today-task {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  background: var(--subtle-bg);
+}
+
+.today-task.overdue { background: rgba(215, 0, 21, 0.05); }
+
+.today-task > input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-top: 3px;
+  cursor: pointer;
+}
+
+.today-task-body { flex: 1; min-width: 0; }
+
+.today-note {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.today-task.overdue .today-note { color: var(--danger); }
+
+.today-clear {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 10px 0 0;
+}
+
 /* ---- Task list ---- */
 
 #task-list {

@@ -50,16 +50,16 @@
       </div>
     </div>
 
-    <!-- Shared board vs. just my assignments -->
     <div class="tabs" role="tablist">
-      <button type="button" class="tab active" id="tab-all" role="tab">Shared board</button>
+      <button type="button" class="tab active" id="tab-today" role="tab">Today</button>
+      <button type="button" class="tab" id="tab-all" role="tab">Shared board</button>
       <button type="button" class="tab" id="tab-mine" role="tab">My tasks</button>
     </div>
 
     <div class="toolbar">
       <button type="button" id="new-task-btn">+ New task</button>
 
-      <div class="filters">
+      <div class="filters" id="board-filters">
         <label class="inline-field" id="assignee-filter-wrap">
           <span>Assignee</span>
           <select id="assignee-filter">
@@ -139,9 +139,17 @@
       </div>
     </form>
 
-    <ul id="task-list"></ul>
+    <!-- Daily overview: every member's work for today, all on one page -->
+    <section id="today-view" class="hidden">
+      <p id="today-date" class="today-date"></p>
+      <div id="today-members"></div>
+    </section>
 
-    <p id="empty-state" class="message hidden"></p>
+    <!-- Sortable list view (shared board / my tasks) -->
+    <section id="board-view">
+      <ul id="task-list"></ul>
+      <p id="empty-state" class="message hidden"></p>
+    </section>
   </section>
 
   <p id="loading" class="message">Loading…</p>
