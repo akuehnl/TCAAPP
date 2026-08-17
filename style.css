@@ -131,6 +131,33 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 #user-email { font-size: 12px; color: var(--muted); }
 
+/* ---- View tabs ---- */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.tab {
+  background: none;
+  color: var(--muted);
+  border-radius: 0;
+  padding: 8px 14px;
+  font-size: 14px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.tab:hover { background: none; color: var(--text); }
+
+.tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
 /* ---- Toolbar ---- */
 
 .toolbar {
@@ -139,6 +166,28 @@ button:disabled { opacity: 0.6; cursor: default; }
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.inline-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.inline-field select {
+  width: auto;
+  padding: 6px 10px;
+  font-size: 13px;
 }
 
 .checkbox-label {

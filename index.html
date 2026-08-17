@@ -27,6 +27,19 @@
     <p id="auth-message" class="message"></p>
   </section>
 
+  <!-- Shown when a signed-in account isn't on the board roster -->
+  <section id="not-member-screen" class="card hidden">
+    <h1>Not on the roster</h1>
+    <p class="subtitle">
+      You're signed in as <strong id="not-member-email"></strong>, but that address
+      isn't on the TCA board roster, so there are no tasks to show.
+    </p>
+    <p class="message">
+      Ask Aden or Isaac to add your address to the roster, then sign in again.
+    </p>
+    <button id="not-member-sign-out" class="secondary">Sign out</button>
+  </section>
+
   <!-- Task screen -->
   <section id="todo-screen" class="card hidden">
     <div class="header-row">
@@ -37,11 +50,27 @@
       </div>
     </div>
 
+    <!-- Shared board vs. just my assignments -->
+    <div class="tabs" role="tablist">
+      <button type="button" class="tab active" id="tab-all" role="tab">Shared board</button>
+      <button type="button" class="tab" id="tab-mine" role="tab">My tasks</button>
+    </div>
+
     <div class="toolbar">
       <button type="button" id="new-task-btn">+ New task</button>
-      <label class="checkbox-label">
-        <input type="checkbox" id="hide-done" /> Hide done
-      </label>
+
+      <div class="filters">
+        <label class="inline-field" id="assignee-filter-wrap">
+          <span>Assignee</span>
+          <select id="assignee-filter">
+            <option value="">Anyone</option>
+            <option value="unassigned">Unassigned</option>
+          </select>
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="hide-done" /> Hide done
+        </label>
+      </div>
     </div>
 
     <!-- Create / edit form -->
@@ -55,9 +84,9 @@
 
       <div class="field">
         <label for="f-assignee">Assignee</label>
-        <input type="text" id="f-assignee" list="assignee-options" maxlength="120"
-               placeholder="Board member or helper" />
-        <datalist id="assignee-options"></datalist>
+        <select id="f-assignee">
+          <option value="">Unassigned</option>
+        </select>
       </div>
 
       <div class="field">
@@ -112,7 +141,7 @@
 
     <ul id="task-list"></ul>
 
-    <p id="empty-state" class="message hidden">No tasks yet — add one above.</p>
+    <p id="empty-state" class="message hidden"></p>
   </section>
 
   <p id="loading" class="message">Loading…</p>

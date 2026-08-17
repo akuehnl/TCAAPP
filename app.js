@@ -1,4 +1,7 @@
-// TCA task tracker — Supabase-backed, vanilla JS.
+// TCA task tracker — shared board backed by Supabase.
+//
+// Every roster member sees every task ("Shared board"); "My tasks" narrows to
+// the tasks assigned to the signed-in member.
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -8,6 +11,7 @@ const PRIORITY_LABEL = { high: "High", medium: "Medium", low: "Low" };
 const $ = (id) => document.getElementById(id);
 
 const authScreen = $("auth-screen");
+const notMemberScreen = $("not-member-screen");
 const todoScreen = $("todo-screen");
 const loadingEl = $("loading");
 
@@ -17,11 +21,19 @@ const passwordInput = $("password");
 const signUpBtn = $("sign-up-btn");
 const authMessage = $("auth-message");
 
+const notMemberEmail = $("not-member-email");
+const notMemberSignOut = $("not-member-sign-out");
+
 const userEmailEl = $("user-email");
 const signOutBtn = $("sign-out-btn");
 
+const tabAll = $("tab-all");
+const tabMine = $("tab-mine");
+
 const newTaskBtn = $("new-task-btn");
 const hideDoneCheckbox = $("hide-done");
+const assigneeFilter = $("assignee-filter");
+const assigneeFilterWrap = $("assignee-filter-wrap");
 
 const taskForm = $("task-form");
 const formHeading = $("form-heading");
@@ -39,20 +51,22 @@ const fCalendarDays = $("f-calendar-days");
 const fProjectLabel = $("f-project-label");
 const fNotes = $("f-notes");
 
-const assigneeOptions = $("assignee-options");
 const labelOptions = $("label-options");
-
 const taskList = $("task-list");
 const emptyState = $("empty-state");
 
 let realtimeChannel = null;
 let tasks = [];
-let editingId = null; // null = creating a new task
+let members = [];
+let membersById = new Map();
+let currentMember = null;   // the signed-in user's roster row
+let editingId = null;       // null = creating a new task
+let currentView = "all";    // "all" | "mine"
 
 function showScreen(screen) {
-  loadingEl.classList.add("hidden");
-  authScreen.classList.add("hidden");
-  todoScreen.classList.add("hidden");
+  for (const el of [loadingEl, authScreen, notMemberScreen, todoScreen]) {
+    el.classList.add("hidden");
+  }
   screen.classList.remove("hidden");
 }
 
@@ -91,6 +105,7 @@ authForm.addEventListener("submit", (e) => {
 });
 signUpBtn.addEventListener("click", handleSignUp);
 signOutBtn.addEventListener("click", () => supabaseClient.auth.signOut());
+notMemberSignOut.addEventListener("click", () => supabaseClient.auth.signOut());
 
 // ---- Date helpers ----
 
@@ -124,6 +139,37 @@ function formatNumber(value) {
   return String(Number(value));
 }
 
+// ---- Views ----
+
+function setView(view) {
+  currentView = view;
+  tabAll.classList.toggle("active", view === "all");
+  tabMine.classList.toggle("active", view === "mine");
+  // The per-person filter is meaningless once the list is already narrowed.
+  assigneeFilterWrap.classList.toggle("hidden", view === "mine");
+  renderTasks();
+}
+
+tabAll.addEventListener("click", () => setView("all"));
+tabMine.addEventListener("click", () => setView("mine"));
+assigneeFilter.addEventListener("change", renderTasks);
+hideDoneCheckbox.addEventListener("change", renderTasks);
+
+function visibleTasks() {
+  let list = tasks;
+
+  if (currentView === "mine") {
+    list = list.filter((t) => currentMember && t.assignee_id === currentMember.id);
+  } else if (assigneeFilter.value === "unassigned") {
+    list = list.filter((t) => !t.assignee_id);
+  } else if (assigneeFilter.value) {
+    list = list.filter((t) => t.assignee_id === assigneeFilter.value);
+  }
+
+  if (hideDoneCheckbox.checked) list = list.filter((t) => !t.is_complete);
+  return list;
+}
+
 // ---- Form ----
 
 function openForm(task) {
@@ -133,7 +179,10 @@ function openForm(task) {
   setMessage(formMessage, "");
 
   fTitle.value = task?.title ?? "";
-  fAssignee.value = task?.assignee ?? "";
+  // A new task in "My tasks" defaults to me — that's the common case there.
+  fAssignee.value = task
+    ? (task.assignee_id ?? "")
+    : (currentView === "mine" && currentMember ? currentMember.id : "");
   fDueDate.value = task?.due_date ?? "";
   fPriority.value = task?.priority ?? "medium";
   fStatus.value = task?.is_complete ? "done" : "open";
@@ -169,7 +218,7 @@ function numberOrNull(input) {
 function readForm() {
   return {
     title: fTitle.value.trim(),
-    assignee: textOrNull(fAssignee),
+    assignee_id: fAssignee.value || null,
     due_date: fDueDate.value || null,
     priority: fPriority.value,
     is_complete: fStatus.value === "done",
@@ -203,18 +252,53 @@ taskForm.addEventListener("submit", async (e) => {
 });
 
 newTaskBtn.addEventListener("click", () => {
-  if (!taskForm.classList.contains("hidden") && editingId === null) {
-    closeForm();
-  } else {
-    openForm(null);
-  }
+  if (!taskForm.classList.contains("hidden") && editingId === null) closeForm();
+  else openForm(null);
 });
 
 cancelBtn.addEventListener("click", closeForm);
 
-hideDoneCheckbox.addEventListener("change", renderTasks);
-
 // ---- Data ----
+
+async function loadMembers() {
+  const { data, error } = await supabaseClient
+    .from("members")
+    .select("*")
+    .eq("is_active", true)
+    .order("sort_order");
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  members = data;
+  membersById = new Map(members.map((m) => [m.id, m]));
+  populateMemberSelects();
+}
+
+function memberOption(member) {
+  const option = document.createElement("option");
+  option.value = member.id;
+  option.textContent = member.role ? `${member.name} — ${member.role}` : member.name;
+  return option;
+}
+
+function populateMemberSelects() {
+  const keepAssignee = fAssignee.value;
+  const keepFilter = assigneeFilter.value;
+
+  fAssignee.length = 1;                 // keep "Unassigned"
+  assigneeFilter.length = 2;            // keep "Anyone" and "Unassigned"
+
+  for (const member of members) {
+    fAssignee.appendChild(memberOption(member));
+    assigneeFilter.appendChild(memberOption(member));
+  }
+
+  fAssignee.value = keepAssignee;
+  assigneeFilter.value = keepFilter;
+}
 
 async function loadTasks() {
   const { data, error } = await supabaseClient
@@ -228,7 +312,7 @@ async function loadTasks() {
   }
   tasks = data;
   renderTasks();
-  refreshDatalists();
+  refreshLabelOptions();
 }
 
 async function createTask(payload) {
@@ -242,10 +326,7 @@ async function createTask(payload) {
 }
 
 async function updateTask(id, payload) {
-  const { error } = await supabaseClient
-    .from("todos")
-    .update(payload)
-    .eq("id", id);
+  const { error } = await supabaseClient.from("todos").update(payload).eq("id", id);
   return error;
 }
 
@@ -289,8 +370,16 @@ function sortTasks(list) {
 
 function buildMetaLine(task) {
   const parts = [];
-  if (task.assignee) parts.push(task.assignee);
-  if (task.due_date) parts.push((isOverdue(task) ? "Overdue — due " : "Due ") + formatDueDate(task.due_date));
+
+  // In "My tasks" every row is mine, so the name would just be noise.
+  if (currentView === "all") {
+    const member = task.assignee_id ? membersById.get(task.assignee_id) : null;
+    parts.push(member ? member.name : "Unassigned");
+  }
+
+  if (task.due_date) {
+    parts.push((isOverdue(task) ? "Overdue — due " : "Due ") + formatDueDate(task.due_date));
+  }
 
   const estimates = [];
   if (task.est_work_hours != null) estimates.push(`${formatNumber(task.est_work_hours)}h work`);
@@ -373,8 +462,28 @@ function renderTask(task) {
   return li;
 }
 
+function updateTabCounts() {
+  const open = tasks.filter((t) => !t.is_complete);
+  const mine = currentMember
+    ? open.filter((t) => t.assignee_id === currentMember.id)
+    : [];
+  tabAll.textContent = `Shared board (${open.length})`;
+  tabMine.textContent = `My tasks (${mine.length})`;
+}
+
+function emptyMessage() {
+  if (tasks.length === 0) return "No tasks yet — add one above.";
+  if (currentView === "mine") {
+    return hideDoneCheckbox.checked
+      ? "Nothing open assigned to you right now."
+      : "Nothing is assigned to you yet.";
+  }
+  if (assigneeFilter.value) return "No tasks match this filter.";
+  return "No open tasks. Uncheck “Hide done” to see completed ones.";
+}
+
 function renderTasks() {
-  const visible = hideDoneCheckbox.checked ? tasks.filter((t) => !t.is_complete) : tasks;
+  const visible = visibleTasks();
 
   taskList.innerHTML = "";
   for (const task of sortTasks(visible)) {
@@ -382,41 +491,31 @@ function renderTasks() {
   }
 
   emptyState.classList.toggle("hidden", visible.length > 0);
-  emptyState.textContent = tasks.length === 0
-    ? "No tasks yet — add one above."
-    : "No open tasks. Uncheck “Hide done” to see completed ones.";
+  emptyState.textContent = emptyMessage();
+  updateTabCounts();
 }
 
-// Suggest assignees and labels already in use.
-function fillDatalist(el, values) {
-  el.innerHTML = "";
+function refreshLabelOptions() {
+  const values = [...new Set(tasks.map((t) => t.project_label).filter(Boolean))].sort();
+  labelOptions.innerHTML = "";
   for (const value of values) {
     const option = document.createElement("option");
     option.value = value;
-    el.appendChild(option);
+    labelOptions.appendChild(option);
   }
-}
-
-function refreshDatalists() {
-  const distinct = (key) =>
-    [...new Set(tasks.map((t) => t[key]).filter(Boolean))].sort();
-
-  fillDatalist(assigneeOptions, distinct("assignee"));
-  fillDatalist(labelOptions, distinct("project_label"));
 }
 
 // ---- Realtime ----
 
-function subscribeToTasks(userId) {
+function subscribeToTasks() {
   if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
 
+  // No user_id filter now: the board is shared, so every member's changes
+  // matter to everyone.
   realtimeChannel = supabaseClient
-    .channel("todos-changes")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "todos", filter: `user_id=eq.${userId}` },
-      () => loadTasks()
-    )
+    .channel("board-changes")
+    .on("postgres_changes", { event: "*", schema: "public", table: "todos" }, () => loadTasks())
+    .on("postgres_changes", { event: "*", schema: "public", table: "members" }, () => loadMembers())
     .subscribe();
 }
 
@@ -424,9 +523,28 @@ function subscribeToTasks(userId) {
 
 async function enterApp(session) {
   userEmailEl.textContent = session.user.email;
+
+  const { data: member, error } = await supabaseClient
+    .from("members")
+    .select("*")
+    .eq("user_id", session.user.id)
+    .maybeSingle();
+
+  if (error) console.error(error);
+
+  if (!member) {
+    notMemberEmail.textContent = session.user.email;
+    showScreen(notMemberScreen);
+    return;
+  }
+
+  currentMember = member;
   showScreen(todoScreen);
+
+  await loadMembers();
   await loadTasks();
-  subscribeToTasks(session.user.id);
+  setView(currentView);
+  subscribeToTasks();
 }
 
 function exitApp() {
@@ -435,6 +553,9 @@ function exitApp() {
     realtimeChannel = null;
   }
   tasks = [];
+  members = [];
+  membersById = new Map();
+  currentMember = null;
   taskList.innerHTML = "";
   closeForm();
   authForm.reset();
@@ -447,8 +568,17 @@ supabaseClient.auth.onAuthStateChange((_event, session) => {
   else exitApp();
 });
 
+// A failure here used to leave the page stuck on "Loading…" forever, so fall
+// back to the sign-in screen rather than a dead end.
 (async function init() {
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  if (session) enterApp(session);
-  else showScreen(authScreen);
+  try {
+    const { data: { session }, error } = await supabaseClient.auth.getSession();
+    if (error) throw error;
+    if (session) await enterApp(session);
+    else showScreen(authScreen);
+  } catch (error) {
+    console.error(error);
+    showScreen(authScreen);
+    setMessage(authMessage, "Couldn't restore your session — please sign in again.", "error");
+  }
 })();
