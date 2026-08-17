@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>To-Do</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div id="app">
+
+  <!-- Auth screen -->
+  <section id="auth-screen" class="card hidden">
+    <h1>To-Do</h1>
+    <p class="subtitle">Sign in or create an account to manage your tasks.</p>
+
+    <form id="auth-form">
+      <input type="email" id="email" placeholder="Email" required autocomplete="email" />
+      <input type="password" id="password" placeholder="Password" required autocomplete="current-password" minlength="6" />
+      <div class="button-row">
+        <button type="submit" id="sign-in-btn">Sign In</button>
+        <button type="button" id="sign-up-btn">Sign Up</button>
+      </div>
+    </form>
+
+    <p id="auth-message" class="message"></p>
+  </section>
+
+  <!-- Todo screen -->
+  <section id="todo-screen" class="card hidden">
+    <div class="header-row">
+      <h1>To-Do</h1>
+      <div class="header-right">
+        <span id="user-email"></span>
+        <button id="sign-out-btn" class="link-btn">Sign out</button>
+      </div>
+    </div>
+
+    <form id="new-task-form">
+      <input type="text" id="new-task-input" placeholder="Add a task…" required maxlength="500" />
+      <button type="submit">Add</button>
+    </form>
+
+    <ul id="task-list"></ul>
+
+    <p id="empty-state" class="message hidden">No tasks yet — add one above.</p>
+  </section>
+
+  <p id="loading" class="message">Loading…</p>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
