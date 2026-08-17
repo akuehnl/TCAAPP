@@ -1,72 +1,76 @@
-# To-Do App
+# TCA Tasks
 
-A simple to-do list with email/password accounts (each user sees only their
-own tasks). Static frontend (HTML/CSS/JS, no build step) backed by
+A task tracker with email/password accounts (each user sees only their own
+tasks). Static frontend (HTML/CSS/JS, no build step) backed by
 [Supabase](https://supabase.com) (Postgres + Auth), hosted on GitHub Pages.
+
+Live at **https://akuehnl.github.io/TCAAPP/**
+
+## Task fields
+
+| Field | Column | Notes |
+| --- | --- | --- |
+| Title | `title` | Required |
+| Assignee | `assignee` | Board member or helper; free text, autocompletes from names already used |
+| Due date | `due_date` | Optional; overdue tasks are highlighted in red |
+| Priority | `priority` | High / Medium / Low — set manually, no auto-calculation |
+| Est. work hours | `est_work_hours` | Actual hands-on effort |
+| Est. calendar days | `est_calendar_days` | Wall-clock time, accounting for waiting on others |
+| Status | `is_complete` | Open / Done (stored as a boolean) |
+| Project / group | `project_label` | Optional; autocompletes from labels already used |
+| Notes | `notes` | Optional, free text |
+
+Tasks sort open-first, then by soonest due date (undated last), then by
+priority. "Hide done" filters completed tasks out of the list.
 
 ## 1. Create the Supabase project
 
 1. Go to [supabase.com](https://supabase.com) → sign in → **New project**.
-2. Pick a name, database password, and region. Wait ~2 minutes for it to provision.
-3. In the left sidebar go to **SQL Editor → New query**, paste the contents
-   of [`supabase/schema.sql`](supabase/schema.sql), and click **Run**. This
+2. Pick a name, database password, and region. Wait ~2 minutes to provision.
+3. In the sidebar go to **SQL Editor → New query**, paste the contents of
+   [`supabase/schema.sql`](supabase/schema.sql), and click **Run**. This
    creates the `todos` table with Row Level Security so each user can only
    read/write their own rows.
 4. Go to **Project Settings → API**. Copy the **Project URL** and the
-   **anon public** key.
-5. (Optional, recommended for quick testing) Go to **Authentication →
-   Providers → Email** and turn off "Confirm email" if you don't want to
-   click a confirmation link every time you sign up a test account. Leave it
-   on for a real deployment.
+   **anon public** key into [`config.js`](config.js).
+5. Go to **Authentication → URL Configuration** and set **Site URL** to your
+   deployed address (e.g. `https://akuehnl.github.io/TCAAPP/`). Add both that
+   URL and `http://localhost:5500/` under **Redirect URLs**. Skipping this
+   sends confirmation emails to Supabase's default `localhost:3000`.
 
-## 2. Configure the app
+### Already have the old single-field table?
 
-Open [`config.js`](config.js) and paste in the values from step 1.4:
+Run [`supabase/migration-001-task-fields.sql`](supabase/migration-001-task-fields.sql)
+in the SQL Editor instead of `schema.sql`. It renames `task` → `title`, adds
+the new columns, and preserves existing rows. It's safe to run more than once.
 
-```js
-const SUPABASE_URL = "https://xxxxxxxx.supabase.co";
-const SUPABASE_ANON_KEY = "eyJ...";
-```
+## 2. Run it locally
 
-The anon key is meant to be public in client-side apps like this one — your
-data is protected by the Row Level Security policies in `schema.sql`, not by
-hiding the key.
-
-## 3. Try it locally (optional)
-
-Any static file server works, e.g.:
+Any static file server works:
 
 ```bash
-npx serve .
+npx serve -l 5500 .
 ```
 
-Then open the printed localhost URL, sign up with an email/password, and add
-some tasks.
+Then open http://localhost:5500 and sign in.
 
-## 4. Push to GitHub
+## 3. Deploy
+
+Push to `main` — GitHub Pages redeploys automatically:
 
 ```bash
-git init
-git add .
-git commit -m "Initial to-do app"
-git branch -M main
-git remote add origin https://github.com/<your-username>/<your-repo>.git
-git push -u origin main
+git push
 ```
 
-## 5. Enable GitHub Pages
-
-1. On GitHub, open the repo → **Settings → Pages**.
-2. Under **Build and deployment**, set **Source** to "Deploy from a branch".
-3. Set **Branch** to `main` and folder to `/ (root)`, then **Save**.
-4. After a minute, your app will be live at
-   `https://<your-username>.github.io/<your-repo>/`.
+Pages is configured under repo **Settings → Pages**: source "Deploy from a
+branch", branch `main`, folder `/ (root)`.
 
 ## Notes
 
-- `config.js` is committed with real keys since the anon key is safe to
-  expose. Don't put your database password or the `service_role` key
-  anywhere in this project.
-- Tasks update live across tabs/devices via Supabase Realtime.
-- To reset everything, drop the `todos` table in the SQL editor and re-run
-  `schema.sql`.
+- `config.js` is committed with real values because the anon key is designed
+  to be public in client-side apps — your data is protected by the Row Level
+  Security policies in `schema.sql`, not by hiding the key. Never commit your
+  database password or the `service_role` key.
+- Tasks sync live across tabs and devices via Supabase Realtime.
+- Priority is manual in Phase 1. Auto-calculation from due date, work hours,
+  and calendar days is a possible Phase 2.

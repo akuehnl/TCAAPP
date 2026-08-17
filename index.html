@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>To-Do</title>
+<title>TCA Tasks</title>
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -12,8 +12,8 @@
 
   <!-- Auth screen -->
   <section id="auth-screen" class="card hidden">
-    <h1>To-Do</h1>
-    <p class="subtitle">Sign in or create an account to manage your tasks.</p>
+    <h1>TCA Tasks</h1>
+    <p class="subtitle">Sign in or create an account to manage tasks.</p>
 
     <form id="auth-form">
       <input type="email" id="email" placeholder="Email" required autocomplete="email" />
@@ -27,19 +27,87 @@
     <p id="auth-message" class="message"></p>
   </section>
 
-  <!-- Todo screen -->
+  <!-- Task screen -->
   <section id="todo-screen" class="card hidden">
     <div class="header-row">
-      <h1>To-Do</h1>
+      <h1>TCA Tasks</h1>
       <div class="header-right">
         <span id="user-email"></span>
         <button id="sign-out-btn" class="link-btn">Sign out</button>
       </div>
     </div>
 
-    <form id="new-task-form">
-      <input type="text" id="new-task-input" placeholder="Add a task…" required maxlength="500" />
-      <button type="submit">Add</button>
+    <div class="toolbar">
+      <button type="button" id="new-task-btn">+ New task</button>
+      <label class="checkbox-label">
+        <input type="checkbox" id="hide-done" /> Hide done
+      </label>
+    </div>
+
+    <!-- Create / edit form -->
+    <form id="task-form" class="task-form hidden">
+      <h2 id="form-heading">New task</h2>
+
+      <div class="field full">
+        <label for="f-title">Title</label>
+        <input type="text" id="f-title" required maxlength="300" />
+      </div>
+
+      <div class="field">
+        <label for="f-assignee">Assignee</label>
+        <input type="text" id="f-assignee" list="assignee-options" maxlength="120"
+               placeholder="Board member or helper" />
+        <datalist id="assignee-options"></datalist>
+      </div>
+
+      <div class="field">
+        <label for="f-due-date">Due date</label>
+        <input type="date" id="f-due-date" />
+      </div>
+
+      <div class="field">
+        <label for="f-priority">Priority</label>
+        <select id="f-priority">
+          <option value="high">High</option>
+          <option value="medium" selected>Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="f-status">Status</label>
+        <select id="f-status">
+          <option value="open" selected>Open</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="f-work-hours">Est. work hours</label>
+        <input type="number" id="f-work-hours" min="0" step="0.25" placeholder="Hands-on effort" />
+      </div>
+
+      <div class="field">
+        <label for="f-calendar-days">Est. calendar days</label>
+        <input type="number" id="f-calendar-days" min="0" step="0.5" placeholder="Wall-clock time" />
+      </div>
+
+      <div class="field full">
+        <label for="f-project-label">Project / group <span class="optional">optional</span></label>
+        <input type="text" id="f-project-label" list="label-options" maxlength="120" />
+        <datalist id="label-options"></datalist>
+      </div>
+
+      <div class="field full">
+        <label for="f-notes">Notes <span class="optional">optional</span></label>
+        <textarea id="f-notes" rows="3"></textarea>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" id="save-btn">Save task</button>
+        <button type="button" id="cancel-btn" class="secondary">Cancel</button>
+        <span id="form-message" class="message"></span>
+      </div>
     </form>
 
     <ul id="task-list"></ul>
