@@ -49,6 +49,12 @@ function canEditMotion(motion) {
   return isChair() || (currentMember && motion.recorded_by === currentMember.id);
 }
 
+// Only board members vote. Staff are on the roster so they can be assigned
+// tasks and named on agenda items, but they take no part in motions.
+function votingMembers() {
+  return members.filter((m) => m.is_active && m.can_vote !== false);
+}
+
 // Counted from the roll call rather than stored, so the tally can never drift
 // out of step with the individual votes.
 function tallyFor(motionId) {
@@ -249,7 +255,15 @@ function renderRollCall(motion, readOnly) {
   heading.textContent = "Roll call";
   wrap.appendChild(heading);
 
-  for (const member of members.filter((m) => m.is_active)) {
+  if (!votingMembers().length) {
+    const none = document.createElement("p");
+    none.className = "minute-none";
+    none.textContent = "No voting members on the roster.";
+    wrap.appendChild(none);
+    return wrap;
+  }
+
+  for (const member of votingMembers()) {
     const row = document.createElement("div");
     row.className = "roll-row";
 
@@ -387,7 +401,8 @@ function memberSelect(placeholder, className, selected) {
   blank.value = "";
   blank.textContent = placeholder;
   select.appendChild(blank);
-  for (const member of members.filter((m) => m.is_active)) {
+  // A motion has to be moved and seconded by someone entitled to vote.
+  for (const member of votingMembers()) {
     const option = document.createElement("option");
     option.value = member.id;
     option.textContent = member.name;

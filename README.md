@@ -76,8 +76,10 @@ During the meeting, each approved item carries its own minutes block:
   a motion when suggested, because motions arise mid-discussion. Each records
   the wording, who moved and seconded it, and the chair's declared outcome
   (carried / failed / tabled / withdrawn).
-- **Roll call** — every active member is marked **Yea**, **Nay** or
-  **Abstain**. Tallies are counted from those rows rather than stored, so they
+- **Roll call** — every active *voting* member is marked **Yea**, **Nay** or
+  **Abstain**. Staff on the roster (Elise, Kate) do not appear: they are there
+  to be assigned tasks and named on agenda items, not to vote. The same
+  restriction applies to who can move and second a motion. Tallies are counted from those rows rather than stored, so they
   cannot drift out of step with the individual votes. Members with no vote
   recorded show a dash in the archive.
 - **Mark discussed** — ticks an item off. Open to any member, not just the
@@ -114,6 +116,11 @@ just hidden in the UI, so it holds even against direct API calls.
 | Admin | `is_admin` | Aden | Everything a chair can, plus change the chair and activate/deactivate members |
 | Board Chair | `is_chair` | Josiah (changeable in-app) | Approve, decline, reorder and edit agenda items |
 | Member | — | Everyone else on the roster | All task work; suggest agenda items and edit their own pending ones |
+| Voting | `can_vote` | The five board members | Appear on the roll call, and may move or second a motion |
+
+Staff (Elise, Kate) are on the roster so they can hold tasks and be named on
+agenda items, but `can_vote` is false, so they never appear on a roll call. An
+admin can change that per person from the People section.
 
 The chair is changed from the **People** section — no code or SQL edit. Because
 every permission check reads the `members` table at query time, a change takes
@@ -191,7 +198,9 @@ Run these in the Supabase SQL Editor **in order**, once each:
    adds grant/revoke admin and adding people from the app.
 9. [`supabase/migration-008-minutes-and-motions.sql`](supabase/migration-008-minutes-and-motions.sql) —
    adds meeting minutes, motions, roll-call votes and the completed-meetings archive.
-10. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
+10. [`supabase/migration-009-voting-rights.sql`](supabase/migration-009-voting-rights.sql) —
+    separates voting board members from non-voting staff.
+11. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
     loads the existing 46-task list and adds Elise and Kate to the roster.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key

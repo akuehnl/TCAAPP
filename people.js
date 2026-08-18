@@ -156,6 +156,32 @@ personForm.addEventListener("submit", async (e) => {
   renderPeople();
 });
 
+async function setMemberVoting(memberId, canVote) {
+  const member = membersById.get(memberId);
+  if (!member) return;
+
+  const question = canVote
+    ? "Give " + member.name + " voting rights on motions?"
+    : "Remove " + member.name + " from the roll call? Any votes already recorded for them will be cleared.";
+  if (!confirm(question)) return;
+
+  setMessage(peopleMessage, "Updating\u2026");
+  const { error } = await supabaseClient.rpc("set_member_voting", {
+    target: memberId,
+    p_can_vote: canVote,
+  });
+
+  if (error) {
+    setMessage(peopleMessage, error.message, "error");
+    return;
+  }
+
+  await loadMembers();
+  setMessage(peopleMessage,
+    member.name + (canVote ? " can now vote on motions." : " no longer votes on motions."), "success");
+  renderPeople();
+}
+
 function roleBadge(text, className) {
   const badge = document.createElement("span");
   badge.className = "badge " + className;
@@ -199,6 +225,7 @@ function renderPersonRow(member) {
   if (member.is_chair) nameRow.appendChild(roleBadge("Board Chair", "chair-badge"));
   if (member.is_admin) nameRow.appendChild(roleBadge("Admin", "admin-badge"));
   if (!member.is_active) nameRow.appendChild(roleBadge("Inactive", "label-badge"));
+  if (member.can_vote === false) nameRow.appendChild(roleBadge("Non-voting", "label-badge"));
   if (!member.email) nameRow.appendChild(roleBadge("No login", "label-badge"));
 
   body.appendChild(nameRow);
@@ -240,7 +267,14 @@ function renderPersonRow(member) {
     activeToggle.textContent = member.is_active ? "Deactivate" : "Reactivate";
     activeToggle.addEventListener("click", () => setMemberActive(member.id, !member.is_active));
 
-    actions.append(adminToggle, activeToggle);
+    const voteToggle = document.createElement("button");
+    voteToggle.type = "button";
+    voteToggle.className = "icon-btn";
+    voteToggle.textContent = member.can_vote === false ? "Allow voting" : "Remove voting";
+    voteToggle.addEventListener("click", () =>
+      setMemberVoting(member.id, member.can_vote === false));
+
+    actions.append(adminToggle, voteToggle, activeToggle);
     row.appendChild(actions);
   }
 
