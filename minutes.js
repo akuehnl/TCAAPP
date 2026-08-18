@@ -642,14 +642,21 @@ async function removeAttendance(id) {
 }
 
 function attendanceSummary() {
-  const present = attendance.filter((a) => a.status === "present");
-  const voting = present.filter((a) => a.member_id && membersById.get(a.member_id)?.can_vote !== false);
+  // Count only rows that are actually on the roll: board members, plus
+  // guests. A row left behind for someone since removed from the board would
+  // otherwise keep inflating the totals.
+  const counted = attendance.filter(
+    (a) => a.guest_name || (a.member_id && membersById.get(a.member_id)?.can_vote !== false)
+  );
+
+  const present = counted.filter((a) => a.status === "present");
+  const voting = present.filter((a) => a.member_id);
   const eligible = votingMembers().length;
   const guests = guestRows().filter((a) => a.status === "present").length;
 
   const bits = [`${present.length} present`];
-  const absent = attendance.filter((a) => a.status === "absent").length;
-  const excused = attendance.filter((a) => a.status === "excused").length;
+  const absent = counted.filter((a) => a.status === "absent").length;
+  const excused = counted.filter((a) => a.status === "excused").length;
   if (absent) bits.push(`${absent} absent`);
   if (excused) bits.push(`${excused} excused`);
   if (guests) bits.push(`${guests} guest${guests === 1 ? "" : "s"}`);
@@ -677,21 +684,15 @@ function buildAttendanceBlock(readOnly) {
   head.append(title, summary);
   block.appendChild(head);
 
-  // Everyone on the roster, voting or not — attendance is about who is in the
-  // room, not who may vote.
-  for (const member of members.filter((m) => m.is_active)) {
+  // The named roll is the board. Anyone else who attends — staff, a parent, a
+  // vendor — is written in as a guest below.
+  for (const member of votingMembers()) {
     const row = document.createElement("div");
     row.className = "attend-row";
 
     const name = document.createElement("span");
     name.className = "attend-name";
     name.textContent = member.name;
-    if (member.can_vote === false) {
-      const tag = document.createElement("span");
-      tag.className = "attend-tag";
-      tag.textContent = "non-voting";
-      name.appendChild(tag);
-    }
     row.appendChild(name);
 
     const current = attendanceFor(member.id)?.status ?? null;

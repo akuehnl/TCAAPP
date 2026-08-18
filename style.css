@@ -712,17 +712,34 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 /* ---- Meeting minutes ---- */
 
-.item-done {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
+/* Sits below the minutes; fills green once the item has been discussed. */
+.discuss-btn {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 11px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  background: var(--card-bg);
   color: var(--muted);
-  margin-top: 8px;
-  cursor: pointer;
+  border: 1.5px solid var(--border);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
-.item-done input { width: 15px; height: 15px; cursor: pointer; }
+.discuss-btn:hover {
+  background: var(--subtle-bg);
+  border-color: var(--muted);
+  color: var(--text);
+}
+
+.discuss-btn.done {
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
+}
+
+.discuss-btn.done:hover { background: #15803d; border-color: #15803d; color: #fff; }
 
 .agenda-item.item-complete { background: rgba(26, 127, 55, 0.04); }
 .agenda-item.item-complete .task-title { color: var(--muted); }
@@ -945,12 +962,6 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 .attend-name { font-size: 13px; min-width: 90px; font-weight: 500; }
 
-.attend-tag {
-  font-size: 10px;
-  font-weight: 400;
-  color: var(--muted);
-  margin-left: 6px;
-}
 
 .attend-options { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 
@@ -980,3 +991,17 @@ button:disabled { opacity: 0.6; cursor: default; }
 .guest-form { display: flex; gap: 6px; margin-top: 8px; }
 .guest-form input { flex: 1; font-size: 13px; padding: 7px 9px; }
 .guest-form button { padding: 7px 12px; font-size: 13px; white-space: nowrap; }
+
+/* Reopen sits beside the header row in the completed-meetings archive. */
+.archived-row { display: flex; align-items: stretch; }
+.archived-row .archived-header { flex: 1; }
+
+.reopen-btn {
+  border-radius: 0;
+  padding: 0 14px;
+  font-size: 13px;
+  white-space: nowrap;
+  border-left: 1px solid var(--border);
+}
+
+.reopen-btn:hover { background: rgba(0, 113, 227, 0.08); color: var(--accent); }

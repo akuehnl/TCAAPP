@@ -67,10 +67,10 @@ readable.
 
 ### Attendance
 
-Taken at the top of the agenda, before discussion starts. Every active roster
-member is marked **Present**, **Absent** or **Excused** — staff included, since
-attendance is about who is in the room rather than who may vote. Anyone
-attending who is not on the roster is **written in as a guest**.
+Taken at the top of the agenda, before discussion starts. The named roll is
+the **five voting board members**, each marked **Present**, **Absent** or
+**Excused**. Anyone else who attends — staff, a parent, a vendor — is
+**written in as a guest**, including other app users such as Elise and Kate.
 
 The header counts present, absent, excused and guests, and states how many of
 the voting members are present. That is deliberately a count rather than a
@@ -94,8 +94,10 @@ During the meeting, each approved item carries its own minutes block:
   restriction applies to who can move and second a motion. Tallies are counted from those rows rather than stored, so they
   cannot drift out of step with the individual votes. Members with no vote
   recorded show a dash in the archive.
-- **Mark discussed** — ticks an item off. Open to any member, not just the
-  chair, since the secretary usually keeps the minutes.
+- **Mark as discussed** — a full-width button at the foot of each item, below
+  the minutes, since you tick an item off once the discussion is written up.
+  It fills green when set, and clicking again reopens the item. Open to any
+  member, not just the chair.
 
 **Taking minutes is open to every member**, verified across all of them: any
 member can add notes, record motions, cast the roll call, mark items
@@ -112,9 +114,11 @@ archive them as they stand — left alone they would vanish into the archive
 undiscussed, which is the wrong default for a board. Carried items keep their
 order and land after anything already scheduled.
 
-A closed meeting is read-only: notes, motions, votes and reordering all lock,
-and the summary turns green. The chair can reopen it if something needs
-correcting.
+A closed meeting is read-only: notes, motions, votes, attendance and
+reordering all lock, and the summary turns green. The chair or an admin can
+**reopen** it two ways — the toolbar button on that meeting's agenda, or the
+**Reopen** button beside it in the Completed meetings archive, which also
+jumps you back to the agenda to carry on editing.
 
 The estimated meeting length sits at the top, summed from the approved items,
 alongside the motion count and how much more time the pending suggestions
@@ -219,7 +223,9 @@ Run these in the Supabase SQL Editor **in order**, once each:
     separates voting board members from non-voting staff.
 11. [`supabase/migration-010-attendance.sql`](supabase/migration-010-attendance.sql) —
     adds meeting attendance and guest write-ins.
-12. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
+12. [`supabase/migration-011-attendance-board-only.sql`](supabase/migration-011-attendance-board-only.sql) —
+    limits the named attendance roll to board members.
+13. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
     loads the existing 46-task list and adds Elise and Kate to the roster.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key

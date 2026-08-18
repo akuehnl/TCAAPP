@@ -407,22 +407,21 @@ function renderAgendaRow(item, { approved }) {
   li.append(body, actions);
 
   if (approved) {
-    // Ticking an item off is a minute-taking action, so it is open to any
-    // member rather than chair-only.
+    body.appendChild(buildMinutesBlock(item, isMeetingComplete()));
+
+    // Sits below the minutes: you tick the item off once the discussion is
+    // written up, not before. Open to any member, like the rest of minute
+    // taking.
     if (!isMeetingComplete()) {
-      const done = document.createElement("label");
-      done.className = "item-done";
-      const box = document.createElement("input");
-      box.type = "checkbox";
-      box.checked = Boolean(item.completed_at);
-      box.addEventListener("change", () => toggleItemComplete(item.id, box.checked));
-      const text = document.createElement("span");
-      text.textContent = item.completed_at ? "Discussed" : "Mark discussed";
-      done.append(box, text);
+      const done = document.createElement("button");
+      done.type = "button";
+      done.className = "discuss-btn" + (item.completed_at ? " done" : "");
+      done.textContent = item.completed_at
+        ? "\u2713 Discussed \u2014 click to reopen"
+        : "Mark as discussed";
+      done.addEventListener("click", () => toggleItemComplete(item.id, !item.completed_at));
       body.appendChild(done);
     }
-
-    body.appendChild(buildMinutesBlock(item, isMeetingComplete()));
   }
 
   if (item.completed_at) li.classList.add("item-complete");
@@ -463,14 +462,26 @@ async function completeMeeting() {
   if (data) alert("Meeting closed. " + data + " item" + (data === 1 ? "" : "s") + " carried to next week.");
 }
 
-async function reopenMeeting() {
-  if (!confirm("Reopen this meeting for editing?")) return;
-  const { error } = await supabaseClient.rpc("reopen_meeting", { p_meeting_date: meetingDate });
+async function reopenMeeting(date = meetingDate, fromArchive = false) {
+  if (!confirm("Reopen " + formatMeetingDate(date) + " for editing?")) return;
+
+  const { error } = await supabaseClient.rpc("reopen_meeting", { p_meeting_date: date });
   if (error) {
     alert(error.message);
     return;
   }
-  archiveCache.delete(meetingDate);
+
+  archiveCache.delete(date);
+  expandedMeetings.delete(date);
+
+  // Reopened from the archive: jump to that meeting so you can carry on
+  // editing it, rather than leaving you looking at a list it just left.
+  if (fromArchive) {
+    meetingDate = date;
+    await loadAgenda();
+    setMeetingSubView("agenda");
+    return;
+  }
   await loadAgenda();
 }
 
@@ -639,6 +650,25 @@ function renderCompletedMeetings() {
 
     header.append(caret, label, stamp);
 
+    const row = document.createElement("div");
+    row.className = "archived-row";
+    row.appendChild(header);
+
+    // The archive is where you actually go looking for a past meeting, so the
+    // way back out belongs here too.
+    if (isChair()) {
+      const reopen = document.createElement("button");
+      reopen.type = "button";
+      reopen.className = "icon-btn reopen-btn";
+      reopen.textContent = "Reopen";
+      reopen.title = "Reopen this meeting for editing";
+      reopen.addEventListener("click", (e) => {
+        e.stopPropagation();
+        reopenMeeting(meeting.meeting_date, true);
+      });
+      row.appendChild(reopen);
+    }
+
     const detail = document.createElement("div");
     detail.className = "archived-detail";
     detail.dataset.archive = meeting.meeting_date;
@@ -656,7 +686,7 @@ function renderCompletedMeetings() {
       expandArchived(meeting.meeting_date);
     }
 
-    wrap.append(header, detail);
+    wrap.append(row, detail);
     completedList.appendChild(wrap);
   }
 }
@@ -718,7 +748,9 @@ function renderMeetings() {
 
   const complete = isMeetingComplete();
   newAgendaBtn.classList.toggle("hidden", complete);
-  completeMeetingBtn.classList.toggle("hidden", !isChair() || !approved.length);
+  // Once complete this is the Reopen button, so it has to stay visible even
+  // if every item was carried forward and none are left on this date.
+  completeMeetingBtn.classList.toggle("hidden", !isChair() || (!approved.length && !complete));
   completeMeetingBtn.textContent = complete ? "Reopen meeting" : "Mark meeting complete";
   meetingsSectionComplete(complete);
 
