@@ -12,6 +12,12 @@ const meetingSummary = $("meeting-summary");
 
 const tabSuggestions = $("tab-suggestions");
 const tabAgenda = $("tab-agenda");
+const tabCompleted = $("tab-completed");
+const completedView = $("completed-view");
+const completedList = $("completed-list");
+const completedEmpty = $("completed-empty");
+const completeMeetingBtn = $("complete-meeting-btn");
+const meetingToolbar = $("meeting-toolbar");
 const suggestionsView = $("suggestions-view");
 const agendaViewEl = $("agenda-view");
 const suggestionList = $("suggestion-list");
@@ -34,7 +40,11 @@ const aCancel = $("a-cancel");
 
 let agendaItems = [];
 let meetingDate = null;            // ISO date of the meeting being planned
-let meetingSubView = "suggestions"; // "suggestions" | "agenda"
+let meetingSubView = "suggestions"; // "suggestions" | "agenda" | "completed"
+let meetingRecord = null;           // the `meetings` row, if one exists yet
+let completedMeetings = [];
+let expandedMeetings = new Set();
+let archiveCache = new Map();       // meeting_date -> compiled minutes
 let editingAgendaId = null;
 let agendaChannel = null;
 
@@ -86,13 +96,19 @@ function setMeetingSubView(view) {
   meetingSubView = view;
   tabSuggestions.classList.toggle("active", view === "suggestions");
   tabAgenda.classList.toggle("active", view === "agenda");
+  tabCompleted.classList.toggle("active", view === "completed");
   suggestionsView.classList.toggle("hidden", view !== "suggestions");
   agendaViewEl.classList.toggle("hidden", view !== "agenda");
-  renderMeetings();
+  completedView.classList.toggle("hidden", view !== "completed");
+  // The date stepper and per-meeting controls make no sense in the archive.
+  meetingToolbar.classList.toggle("hidden", view === "completed");
+  if (view === "completed") loadCompletedMeetings();
+  else renderMeetings();
 }
 
 tabSuggestions.addEventListener("click", () => setMeetingSubView("suggestions"));
 tabAgenda.addEventListener("click", () => setMeetingSubView("agenda"));
+tabCompleted.addEventListener("click", () => setMeetingSubView("completed"));
 
 meetingPrev.addEventListener("click", async () => {
   meetingDate = shiftMeeting(meetingDate, -1);
@@ -121,7 +137,18 @@ async function loadAgenda() {
     return;
   }
   agendaItems = data;
+
+  const meetingRes = await supabaseClient
+    .from("meetings").select("*").eq("meeting_date", meetingDate).maybeSingle();
+  if (meetingRes.error) console.error(meetingRes.error);
+  meetingRecord = meetingRes.data ?? null;
+
+  await loadMinutes(agendaItems.filter((i) => i.status === "approved").map((i) => i.id));
   renderMeetings();
+}
+
+function isMeetingComplete() {
+  return meetingRecord?.status === "completed";
 }
 
 function approvedItems() {
@@ -351,7 +378,7 @@ function renderAgendaRow(item, { approved }) {
   const mine = currentMember && item.submitted_by === currentMember.id;
 
   if (approved) {
-    if (isChair()) {
+    if (isChair() && !isMeetingComplete()) {
       actions.append(
         actionButton("↑", () => moveItem(item.id, -1)),
         actionButton("↓", () => moveItem(item.id, 1)),
@@ -377,7 +404,251 @@ function renderAgendaRow(item, { approved }) {
   }
 
   li.append(body, actions);
+
+  if (approved) {
+    // Ticking an item off is a minute-taking action, so it is open to any
+    // member rather than chair-only.
+    if (!isMeetingComplete()) {
+      const done = document.createElement("label");
+      done.className = "item-done";
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.checked = Boolean(item.completed_at);
+      box.addEventListener("change", () => toggleItemComplete(item.id, box.checked));
+      const text = document.createElement("span");
+      text.textContent = item.completed_at ? "Discussed" : "Mark discussed";
+      done.append(box, text);
+      body.appendChild(done);
+    }
+
+    body.appendChild(buildMinutesBlock(item, isMeetingComplete()));
+  }
+
+  if (item.completed_at) li.classList.add("item-complete");
   return li;
+}
+
+// ---- Completing a meeting ----
+
+async function completeMeeting() {
+  const unfinished = approvedItems().filter((i) => !i.completed_at);
+
+  let carry = false;
+  if (unfinished.length) {
+    // Left alone these would disappear into the archive undiscussed, which is
+    // the wrong default for a board - offer to roll them to next week.
+    const plural = unfinished.length === 1;
+    carry = confirm(
+      unfinished.length + (plural ? " item is" : " items are") + " not marked discussed.\n\n" +
+      "OK - move " + (plural ? "it" : "them") + " to next week's meeting.\n" +
+      "Cancel - archive the meeting with " + (plural ? "it" : "them") + " as-is."
+    );
+  } else if (!confirm("Mark this meeting complete and move it to the archive?")) {
+    return;
+  }
+
+  const { data, error } = await supabaseClient.rpc("complete_meeting", {
+    p_meeting_date: meetingDate,
+    carry_forward: carry,
+  });
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  archiveCache.delete(meetingDate);
+  await loadAgenda();
+  if (data) alert("Meeting closed. " + data + " item" + (data === 1 ? "" : "s") + " carried to next week.");
+}
+
+async function reopenMeeting() {
+  if (!confirm("Reopen this meeting for editing?")) return;
+  const { error } = await supabaseClient.rpc("reopen_meeting", { p_meeting_date: meetingDate });
+  if (error) {
+    alert(error.message);
+    return;
+  }
+  archiveCache.delete(meetingDate);
+  await loadAgenda();
+}
+
+completeMeetingBtn.addEventListener("click", () => {
+  if (isMeetingComplete()) reopenMeeting();
+  else completeMeeting();
+});
+
+// ---- Completed meetings archive ----
+
+async function loadCompletedMeetings() {
+  const { data, error } = await supabaseClient
+    .from("meetings").select("*")
+    .eq("status", "completed")
+    .order("meeting_date", { ascending: false });
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+  completedMeetings = data;
+  renderCompletedMeetings();
+}
+
+// Fetched per meeting on expand rather than all at once, so the archive stays
+// cheap as meetings accumulate week after week.
+async function loadArchivedMeeting(date) {
+  if (archiveCache.has(date)) return archiveCache.get(date);
+
+  const { data: items, error } = await supabaseClient
+    .from("agenda_items").select("*")
+    .eq("meeting_date", date).eq("status", "approved")
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    console.error(error);
+    return { items: [], notes: [], motions: [] };
+  }
+
+  const ids = items.map((i) => i.id);
+  let notes = [];
+  let motions = [];
+  let votes = [];
+  if (ids.length) {
+    const [n, m] = await Promise.all([
+      supabaseClient.from("agenda_notes").select("*").in("agenda_item_id", ids).order("inserted_at"),
+      supabaseClient.from("motions").select("*").in("agenda_item_id", ids).order("inserted_at"),
+    ]);
+    notes = n.data ?? [];
+    motions = m.data ?? [];
+
+    const motionIds = motions.map((x) => x.id);
+    if (motionIds.length) {
+      const v = await supabaseClient.from("motion_votes").select("*").in("motion_id", motionIds);
+      votes = v.data ?? [];
+    }
+  }
+
+  const compiled = { items, notes, motions, votes };
+  archiveCache.set(date, compiled);
+  return compiled;
+}
+
+function renderArchivedMeeting(container, compiled) {
+  // Reuse the live minutes renderer by pointing the shared maps at this
+  // meeting. Safe because the archive is read-only and re-rendering the live
+  // agenda reloads them.
+  notesByItem = new Map();
+  motionsByItem = new Map();
+  votesByMotion = new Map();
+  for (const note of compiled.notes) {
+    if (!notesByItem.has(note.agenda_item_id)) notesByItem.set(note.agenda_item_id, []);
+    notesByItem.get(note.agenda_item_id).push(note);
+  }
+  for (const motion of compiled.motions) {
+    if (!motionsByItem.has(motion.agenda_item_id)) motionsByItem.set(motion.agenda_item_id, []);
+    motionsByItem.get(motion.agenda_item_id).push(motion);
+  }
+  for (const vote of compiled.votes ?? []) {
+    if (!votesByMotion.has(vote.motion_id)) votesByMotion.set(vote.motion_id, []);
+    votesByMotion.get(vote.motion_id).push(vote);
+  }
+
+  const ol = document.createElement("ol");
+  ol.className = "agenda-list ordered";
+
+  for (const item of compiled.items) {
+    const li = document.createElement("li");
+    li.className = "agenda-item";
+    if (item.completed_at) li.classList.add("item-complete");
+
+    const body = document.createElement("div");
+    body.className = "agenda-body";
+
+    const titleRow = document.createElement("div");
+    titleRow.className = "title-row";
+    const title = document.createElement("span");
+    title.className = "task-title";
+    title.textContent = item.title;
+    titleRow.append(title, agendaBadges(item));
+    if (!item.completed_at) {
+      const flag = document.createElement("span");
+      flag.className = "badge label-badge";
+      flag.textContent = "Not discussed";
+      titleRow.appendChild(flag);
+    }
+    body.appendChild(titleRow);
+
+    if (item.description) {
+      const desc = document.createElement("div");
+      desc.className = "agenda-description";
+      desc.textContent = item.description;
+      body.appendChild(desc);
+    }
+
+    body.appendChild(buildMinutesBlock(item, true));
+    li.appendChild(body);
+    ol.appendChild(li);
+  }
+
+  container.innerHTML = "";
+  container.appendChild(ol);
+}
+
+async function expandArchived(date) {
+  const compiled = await loadArchivedMeeting(date);
+  const target = document.querySelector('[data-archive="' + date + '"]');
+  if (target) renderArchivedMeeting(target, compiled);
+}
+
+function renderCompletedMeetings() {
+  completedList.innerHTML = "";
+  completedEmpty.classList.toggle("hidden", completedMeetings.length > 0);
+
+  for (const meeting of completedMeetings) {
+    const wrap = document.createElement("div");
+    wrap.className = "archived-meeting";
+    const open = expandedMeetings.has(meeting.meeting_date);
+
+    const header = document.createElement("button");
+    header.type = "button";
+    header.className = "archived-header";
+
+    const caret = document.createElement("span");
+    caret.className = "caret";
+    caret.textContent = open ? "▾" : "▸";
+
+    const label = document.createElement("span");
+    label.className = "archived-date";
+    label.textContent = formatMeetingDate(meeting.meeting_date);
+
+    const stamp = document.createElement("span");
+    stamp.className = "archived-meta";
+    stamp.textContent = meeting.completed_by
+      ? "Closed by " + memberName(meeting.completed_by)
+      : "Closed";
+
+    header.append(caret, label, stamp);
+
+    const detail = document.createElement("div");
+    detail.className = "archived-detail";
+    detail.dataset.archive = meeting.meeting_date;
+    if (!open) detail.classList.add("hidden");
+
+    header.addEventListener("click", () => {
+      if (expandedMeetings.has(meeting.meeting_date)) expandedMeetings.delete(meeting.meeting_date);
+      else expandedMeetings.add(meeting.meeting_date);
+      renderCompletedMeetings();
+      if (expandedMeetings.has(meeting.meeting_date)) expandArchived(meeting.meeting_date);
+    });
+
+    if (open) {
+      detail.textContent = "Loading\u2026";
+      expandArchived(meeting.meeting_date);
+    }
+
+    wrap.append(header, detail);
+    completedList.appendChild(wrap);
+  }
 }
 
 function renderSummary() {
@@ -401,6 +672,24 @@ function renderSummary() {
   meetingSummary.classList.toggle("long", total > 90);
 }
 
+// A completed meeting is read-only; say so rather than silently dropping the
+// controls.
+function meetingsSectionComplete(complete) {
+  meetingSummary.classList.toggle("completed", complete);
+  const existing = document.getElementById("meeting-complete-note");
+  if (existing) existing.remove();
+  if (!complete) return;
+
+  const note = document.createElement("div");
+  note.id = "meeting-complete-note";
+  note.className = "meeting-closed-note";
+  note.textContent = meetingRecord?.completed_at
+    ? "This meeting was closed on " + new Date(meetingRecord.completed_at).toLocaleDateString() +
+      ". Minutes are read-only."
+    : "This meeting is closed. Minutes are read-only.";
+  meetingSummary.after(note);
+}
+
 function renderMeetings() {
   if (!meetingDate) return;
 
@@ -416,6 +705,12 @@ function renderMeetings() {
   newAgendaBtn.textContent = isChair() && meetingSubView === "agenda"
     ? "+ Add item to agenda"
     : "+ Suggest an item";
+
+  const complete = isMeetingComplete();
+  newAgendaBtn.classList.toggle("hidden", complete);
+  completeMeetingBtn.classList.toggle("hidden", !isChair() || !approved.length);
+  completeMeetingBtn.textContent = complete ? "Reopen meeting" : "Mark meeting complete";
+  meetingsSectionComplete(complete);
 
   suggestionList.innerHTML = "";
   for (const item of suggestions) {

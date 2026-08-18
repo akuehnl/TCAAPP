@@ -709,3 +709,197 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 .person-actions .icon-btn { white-space: nowrap; }
 .person-actions .icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ---- Meeting minutes ---- */
+
+.item-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+  cursor: pointer;
+}
+
+.item-done input { width: 15px; height: 15px; cursor: pointer; }
+
+.agenda-item.item-complete { background: rgba(26, 127, 55, 0.04); }
+.agenda-item.item-complete .task-title { color: var(--muted); }
+
+.minutes-block {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.minutes-heading {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  margin: 10px 0 6px;
+}
+
+.minute-list, .motion-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.minute-note, .motion-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  background: var(--subtle-bg);
+}
+
+.minute-main { flex: 1; min-width: 0; }
+.minute-body { font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+.minute-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.minute-none { font-size: 12px; color: var(--muted); margin: 0; font-style: italic; }
+.minute-actions { display: flex; gap: 2px; flex-shrink: 0; }
+.minute-actions .icon-btn { padding: 2px 6px; font-size: 12px; }
+
+.note-form { display: flex; gap: 6px; margin-top: 6px; align-items: flex-start; }
+.note-form textarea { flex: 1; font-size: 13px; padding: 7px 9px; }
+.note-form button { padding: 7px 12px; font-size: 13px; white-space: nowrap; }
+
+/* ---- Motions ---- */
+
+.motion-row { border-left: 3px solid #5b21b6; }
+.motion-row.outcome-failed { border-left-color: var(--danger); }
+.motion-row.outcome-carried { border-left-color: var(--success); }
+.motion-row.outcome-pending { border-left-color: var(--muted); }
+
+.motion-text { font-size: 13px; font-weight: 500; white-space: pre-wrap; word-break: break-word; }
+.motion-result { display: flex; align-items: center; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
+.motion-tally { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.outcome-badge.carried { background: #dcf5e3; color: #14532d; }
+.outcome-badge.failed { background: #ffe5e5; color: #a30010; }
+.outcome-badge.pending { background: #ececf0; color: var(--muted); }
+.outcome-badge.tabled, .outcome-badge.withdrawn { background: #fff2d9; color: #8a5a00; }
+
+.add-motion-btn { margin-top: 4px; font-size: 12px; }
+
+.motion-form {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.motion-form textarea { font-size: 13px; }
+.motion-row-fields { display: flex; gap: 8px; flex-wrap: wrap; }
+.motion-row-fields select { width: auto; flex: 1; min-width: 130px; font-size: 13px; padding: 7px 9px; }
+
+.vote-field { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--muted); }
+.vote-field input { width: 70px; padding: 6px 8px; font-size: 13px; }
+.vote-field select { width: auto; padding: 6px 8px; font-size: 13px; }
+
+.motion-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.motion-actions button { padding: 7px 12px; font-size: 13px; }
+.motion-actions .message { margin-top: 0; }
+
+/* ---- Completed meetings ---- */
+
+.meeting-summary.completed { border-color: var(--success); background: rgba(26, 127, 55, 0.05); }
+
+.meeting-closed-note {
+  font-size: 12px;
+  color: var(--success);
+  margin: -8px 0 16px;
+  font-weight: 500;
+}
+
+#completed-list { display: flex; flex-direction: column; gap: 8px; }
+
+.archived-meeting { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+
+.archived-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: none;
+  color: var(--text);
+  border-radius: 0;
+  text-align: left;
+  font-size: 14px;
+}
+
+.archived-header:hover { background: var(--subtle-bg); }
+.caret { color: var(--muted); font-size: 12px; }
+.archived-date { font-weight: 600; flex: 1; }
+.archived-meta { font-size: 12px; color: var(--muted); font-weight: 400; }
+.archived-detail { padding: 0 14px 14px; }
+
+/* ---- Roll call ---- */
+
+.roll-call {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+}
+
+.roll-call-heading {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.roll-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 0;
+  flex-wrap: wrap;
+}
+
+.roll-name { font-size: 13px; min-width: 70px; font-weight: 500; }
+.roll-options { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.roll-none { font-size: 12px; color: var(--muted); }
+
+.vote-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  cursor: pointer;
+  color: var(--muted);
+  user-select: none;
+}
+
+.vote-option input { width: 13px; height: 13px; cursor: pointer; margin: 0; }
+.vote-option:hover { background: var(--subtle-bg); }
+
+.vote-option.selected { font-weight: 600; }
+.vote-option.vote-yea.selected { background: #dcf5e3; border-color: var(--success); color: #14532d; }
+.vote-option.vote-nay.selected { background: #ffe5e5; border-color: var(--danger); color: #a30010; }
+.vote-option.vote-abstain.selected { background: #fff2d9; border-color: #b8860b; color: #8a5a00; }
+
+.vote-option input:disabled { cursor: default; }
+.vote-option input:disabled + span { opacity: 0.8; }
+
+.clear-vote { padding: 2px 6px; font-size: 12px; }
+.outcome-inline { width: auto; padding: 4px 8px; font-size: 12px; }

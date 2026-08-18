@@ -182,10 +182,12 @@
       <div class="tabs" role="tablist">
         <button type="button" class="tab active" id="tab-suggestions" role="tab">Suggestions</button>
         <button type="button" class="tab" id="tab-agenda" role="tab">Approved agenda</button>
+        <button type="button" class="tab" id="tab-completed" role="tab">Completed meetings</button>
       </div>
 
-      <div class="toolbar">
+      <div class="toolbar" id="meeting-toolbar">
         <button type="button" id="new-agenda-btn">+ Suggest an item</button>
+        <button type="button" id="complete-meeting-btn" class="secondary hidden">Mark meeting complete</button>
       </div>
 
       <form id="agenda-form" class="task-form hidden">
@@ -234,6 +236,11 @@
       <div id="agenda-view" class="hidden">
         <ol id="agenda-list" class="agenda-list ordered"></ol>
         <p id="agenda-empty" class="message hidden"></p>
+      </div>
+
+      <div id="completed-view" class="hidden">
+        <div id="completed-list"></div>
+        <p id="completed-empty" class="message hidden">No completed meetings yet.</p>
       </div>
 
     </div><!-- /#meetings-section -->
@@ -302,6 +309,7 @@
 <script src="config.js"></script>
 <script src="app.js"></script>
 <script src="meetings.js"></script>
+<script src="minutes.js"></script>
 <script src="people.js"></script>
 </body>
 </html>

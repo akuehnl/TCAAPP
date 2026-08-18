@@ -62,7 +62,40 @@ readable.
 | Tab | Purpose |
 | --- | --- |
 | **Suggestions** | Anyone on the roster proposes a topic: title, description, estimated minutes, and whether it puts forward a motion to vote on |
-| **Approved agenda** | What the chair has accepted, in the order it will be taken, numbered |
+| **Approved agenda** | What the chair has accepted, in the order it will be taken, numbered — and where minutes are taken during the meeting |
+| **Completed meetings** | The archive: past meetings with their full minutes, motions and roll calls |
+
+### Minutes
+
+During the meeting, each approved item carries its own minutes block:
+
+- **Notes** — any number of discussion points, each stamped with who wrote it
+  and when. Authors can correct their own; the chair or an admin can correct
+  anyone's.
+- **Motions** — recorded against *any* item, whether or not it was flagged as
+  a motion when suggested, because motions arise mid-discussion. Each records
+  the wording, who moved and seconded it, and the chair's declared outcome
+  (carried / failed / tabled / withdrawn).
+- **Roll call** — every active member is marked **Yea**, **Nay** or
+  **Abstain**. Tallies are counted from those rows rather than stored, so they
+  cannot drift out of step with the individual votes. Members with no vote
+  recorded show a dash in the archive.
+- **Mark discussed** — ticks an item off. Open to any member, not just the
+  chair, since the secretary usually keeps the minutes.
+
+Taking minutes is deliberately not chair-gated throughout.
+
+### Closing a meeting
+
+The chair or an admin closes the meeting from the toolbar. If any items are
+not marked discussed, you are asked whether to **carry them to next week** or
+archive them as they stand — left alone they would vanish into the archive
+undiscussed, which is the wrong default for a board. Carried items keep their
+order and land after anything already scheduled.
+
+A closed meeting is read-only: notes, motions, votes and reordering all lock,
+and the summary turns green. The chair can reopen it if something needs
+correcting.
 
 The estimated meeting length sits at the top, summed from the approved items,
 alongside the motion count and how much more time the pending suggestions
@@ -156,8 +189,10 @@ Run these in the Supabase SQL Editor **in order**, once each:
    adds the admin role and in-app chair switching.
 8. [`supabase/migration-007-roster-management.sql`](supabase/migration-007-roster-management.sql) —
    adds grant/revoke admin and adding people from the app.
-9. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
-   loads the existing 46-task list and adds Elise and Kate to the roster.
+9. [`supabase/migration-008-minutes-and-motions.sql`](supabase/migration-008-minutes-and-motions.sql) —
+   adds meeting minutes, motions, roll-call votes and the completed-meetings archive.
+10. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
+    loads the existing 46-task list and adds Elise and Kate to the roster.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key
 into [`config.js`](config.js), and in **Authentication → URL Configuration**
