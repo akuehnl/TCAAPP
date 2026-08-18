@@ -93,7 +93,14 @@ writes, so the invariants live in one place:
   moment with two chairs or none, and refuses inactive members.
 - `set_member_active()` refuses to deactivate you (no locking yourself out) or
   the sitting chair (hand the role over first).
+- `set_member_admin()` refuses to revoke the last active admin.
+- `add_member()` rejects duplicate names and emails, and links the new row to
+  an existing login if that person already signed up.
 - A trigger blocks `is_chair` / `is_admin` changes that bypass those functions.
+
+From the People section an admin can change the chair, grant or revoke admin,
+activate or deactivate someone, and add a new person. Editing an existing
+person's role, email, or capacity is still a SQL edit.
 
 ## Board roster
 
@@ -147,7 +154,9 @@ Run these in the Supabase SQL Editor **in order**, once each:
    adds the Board Meetings section, the `is_chair` flag, and its RLS policies.
 7. [`supabase/migration-006-admin-and-chair.sql`](supabase/migration-006-admin-and-chair.sql) —
    adds the admin role and in-app chair switching.
-8. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
+8. [`supabase/migration-007-roster-management.sql`](supabase/migration-007-roster-management.sql) —
+   adds grant/revoke admin and adding people from the app.
+9. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
    loads the existing 46-task list and adds Elise and Kate to the roster.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key

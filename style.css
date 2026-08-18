@@ -698,3 +698,14 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 .chair-badge { background: #ede4ff; color: #5b21b6; }
 .admin-badge { background: #ffe9d6; color: #9a4a00; }
+
+.person-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.person-actions .icon-btn { white-space: nowrap; }
+.person-actions .icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }

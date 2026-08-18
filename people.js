@@ -2,14 +2,29 @@
 //
 // Loaded after app.js and meetings.js; shares their globals.
 //
-// Everyone on the roster can see who's who. Admins additionally get the chair
-// selector and the active/inactive toggle. Both go through database functions
-// (set_board_chair, set_member_active) rather than direct table writes, so the
-// "exactly one chair" rule and the lockout guards live in one place.
+// Everyone on the roster can see who is who. Admins additionally get the chair
+// selector, the admin toggle, the active/inactive toggle, and the add-person
+// form. All of these go through database functions rather than direct table
+// writes, so the invariants — exactly one chair, at least one admin, nobody
+// locking themselves out — live in one place instead of being re-checked in
+// the UI.
 
 const peopleList = $("people-list");
 const peopleIntro = $("people-intro");
 const peopleMessage = $("people-message");
+const peopleToolbar = $("people-toolbar");
+
+const addPersonBtn = $("add-person-btn");
+const personForm = $("person-form");
+const personFormMessage = $("person-form-message");
+const pName = $("p-name");
+const pFullName = $("p-full-name");
+const pEmail = $("p-email");
+const pRole = $("p-role");
+const pBandwidth = $("p-bandwidth");
+const pCapacity = $("p-capacity");
+const pSave = $("p-save");
+const pCancel = $("p-cancel");
 
 function isAdmin() {
   return currentMember?.is_admin === true;
@@ -62,6 +77,84 @@ async function setMemberActive(memberId, active) {
   setMessage(peopleMessage, `${member.name} ${active ? "reactivated" : "deactivated"}.`, "success");
   renderPeople();
 }
+
+async function setMemberAdmin(memberId, admin) {
+  const member = membersById.get(memberId);
+  if (!member) return;
+
+  const question = admin
+    ? `Make ${member.name} an admin? They will be able to manage the roster and approve agenda items.`
+    : `Revoke ${member.name}'s admin rights?`;
+  if (!confirm(question)) return;
+
+  setMessage(peopleMessage, "Updating…");
+  const { error } = await supabaseClient.rpc("set_member_admin", {
+    target: memberId,
+    admin,
+  });
+
+  if (error) {
+    setMessage(peopleMessage, error.message, "error");
+    return;
+  }
+
+  await loadMembers();
+  setMessage(peopleMessage, `${member.name} is ${admin ? "now" : "no longer"} an admin.`, "success");
+  renderPeople();
+  renderMeetings();
+}
+
+// ---- Adding people ----
+
+function openPersonForm() {
+  personForm.reset();
+  setMessage(personFormMessage, "");
+  personForm.classList.remove("hidden");
+  pName.focus();
+}
+
+function closePersonForm() {
+  personForm.reset();
+  personForm.classList.add("hidden");
+  setMessage(personFormMessage, "");
+}
+
+addPersonBtn.addEventListener("click", () => {
+  if (personForm.classList.contains("hidden")) openPersonForm();
+  else closePersonForm();
+});
+
+pCancel.addEventListener("click", closePersonForm);
+
+personForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = pName.value.trim();
+  if (!name) return;
+
+  pSave.disabled = true;
+  setMessage(personFormMessage, "Adding…");
+
+  const { error } = await supabaseClient.rpc("add_member", {
+    p_name: name,
+    p_full_name: pFullName.value.trim() || null,
+    p_email: pEmail.value.trim() || null,
+    p_role: pRole.value.trim() || null,
+    p_bandwidth: pBandwidth.value,
+    p_capacity: Number(pCapacity.value) || 1,
+  });
+
+  pSave.disabled = false;
+
+  if (error) {
+    setMessage(personFormMessage, error.message, "error");
+    return;
+  }
+
+  closePersonForm();
+  await loadMembers();
+  setMessage(peopleMessage, `${name} added to the roster.`, "success");
+  renderPeople();
+});
 
 function roleBadge(text, className) {
   const badge = document.createElement("span");
@@ -131,12 +224,24 @@ function renderPersonRow(member) {
   row.appendChild(body);
 
   if (isAdmin() && member.id !== currentMember?.id) {
-    const toggle = document.createElement("button");
-    toggle.type = "button";
-    toggle.className = "icon-btn";
-    toggle.textContent = member.is_active ? "Deactivate" : "Reactivate";
-    toggle.addEventListener("click", () => setMemberActive(member.id, !member.is_active));
-    row.appendChild(toggle);
+    const actions = document.createElement("div");
+    actions.className = "person-actions";
+
+    const adminToggle = document.createElement("button");
+    adminToggle.type = "button";
+    adminToggle.className = "icon-btn";
+    adminToggle.textContent = member.is_admin ? "Revoke admin" : "Make admin";
+    adminToggle.disabled = !member.is_active && !member.is_admin;
+    adminToggle.addEventListener("click", () => setMemberAdmin(member.id, !member.is_admin));
+
+    const activeToggle = document.createElement("button");
+    activeToggle.type = "button";
+    activeToggle.className = "icon-btn";
+    activeToggle.textContent = member.is_active ? "Deactivate" : "Reactivate";
+    activeToggle.addEventListener("click", () => setMemberActive(member.id, !member.is_active));
+
+    actions.append(adminToggle, activeToggle);
+    row.appendChild(actions);
   }
 
   return row;
@@ -152,6 +257,9 @@ function renderPeople() {
   peopleIntro.textContent = isAdmin()
     ? `${active.length} active. Select the radio button to change the board chair — it takes effect immediately for everyone.`
     : `${active.length} active. ${chair ? chair.name + " chairs the board." : "No board chair is set."}`;
+
+  peopleToolbar.classList.toggle("hidden", !isAdmin());
+  if (!isAdmin()) closePersonForm();
 
   peopleList.innerHTML = "";
 
