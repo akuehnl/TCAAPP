@@ -143,6 +143,7 @@ async function loadAgenda() {
   if (meetingRes.error) console.error(meetingRes.error);
   meetingRecord = meetingRes.data ?? null;
 
+  await loadAttendance(meetingDate);
   await loadMinutes(agendaItems.filter((i) => i.status === "approved").map((i) => i.id));
   renderMeetings();
 }
@@ -528,7 +529,10 @@ async function loadArchivedMeeting(date) {
     }
   }
 
-  const compiled = { items, notes, motions, votes };
+  const att = await supabaseClient.from("meeting_attendance").select("*")
+    .eq("meeting_date", date).order("inserted_at");
+
+  const compiled = { items, notes, motions, votes, attendance: att.data ?? [] };
   archiveCache.set(date, compiled);
   return compiled;
 }
@@ -552,6 +556,13 @@ function renderArchivedMeeting(container, compiled) {
     if (!votesByMotion.has(vote.motion_id)) votesByMotion.set(vote.motion_id, []);
     votesByMotion.get(vote.motion_id).push(vote);
   }
+
+  container.innerHTML = "";
+
+  // Point the shared attendance state at this meeting for the same reason as
+  // the notes and motions above: reuse the live renderer, read-only.
+  attendance = compiled.attendance ?? [];
+  container.appendChild(buildAttendanceBlock(true));
 
   const ol = document.createElement("ol");
   ol.className = "agenda-list ordered";
@@ -590,7 +601,6 @@ function renderArchivedMeeting(container, compiled) {
     ol.appendChild(li);
   }
 
-  container.innerHTML = "";
   container.appendChild(ol);
 }
 
@@ -718,6 +728,11 @@ function renderMeetings() {
   }
   suggestionsEmpty.classList.toggle("hidden", suggestions.length > 0);
   suggestionsEmpty.textContent = "No suggestions yet for this meeting — add the first one above.";
+
+  // Attendance is taken before discussion starts, so it sits above the agenda.
+  const attendanceHost = $("attendance-host");
+  attendanceHost.innerHTML = "";
+  attendanceHost.appendChild(buildAttendanceBlock(isMeetingComplete()));
 
   agendaList.innerHTML = "";
   for (const item of approved) {

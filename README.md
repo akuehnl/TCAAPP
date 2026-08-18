@@ -65,6 +65,18 @@ readable.
 | **Approved agenda** | What the chair has accepted, in the order it will be taken, numbered — and where minutes are taken during the meeting |
 | **Completed meetings** | The archive: past meetings with their full minutes, motions and roll calls |
 
+### Attendance
+
+Taken at the top of the agenda, before discussion starts. Every active roster
+member is marked **Present**, **Absent** or **Excused** — staff included, since
+attendance is about who is in the room rather than who may vote. Anyone
+attending who is not on the roster is **written in as a guest**.
+
+The header counts present, absent, excused and guests, and states how many of
+the voting members are present. That is deliberately a count rather than a
+quorum verdict: quorum rules are the board's to define, not the app's to
+assume.
+
 ### Minutes
 
 During the meeting, each approved item carries its own minutes block:
@@ -85,7 +97,12 @@ During the meeting, each approved item carries its own minutes block:
 - **Mark discussed** — ticks an item off. Open to any member, not just the
   chair, since the secretary usually keeps the minutes.
 
-Taking minutes is deliberately not chair-gated throughout.
+**Taking minutes is open to every member**, verified across all of them: any
+member can add notes, record motions, cast the roll call, mark items
+discussed, take attendance and write in guests. The only per-person rule is on
+*correcting an existing entry* — you may edit or delete your own, and the chair
+or an admin may edit or delete anyone's. Nothing here is restricted to the
+secretary.
 
 ### Closing a meeting
 
@@ -200,7 +217,9 @@ Run these in the Supabase SQL Editor **in order**, once each:
    adds meeting minutes, motions, roll-call votes and the completed-meetings archive.
 10. [`supabase/migration-009-voting-rights.sql`](supabase/migration-009-voting-rights.sql) —
     separates voting board members from non-voting staff.
-11. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
+11. [`supabase/migration-010-attendance.sql`](supabase/migration-010-attendance.sql) —
+    adds meeting attendance and guest write-ins.
+12. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
     loads the existing 46-task list and adds Elise and Kate to the roster.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key

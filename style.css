@@ -903,3 +903,80 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 .clear-vote { padding: 2px 6px; font-size: 12px; }
 .outcome-inline { width: auto; padding: 4px 8px; font-size: 12px; }
+
+/* ---- Attendance ---- */
+
+.attendance-block {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  background: var(--subtle-bg);
+}
+
+.attendance-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.attendance-title { font-size: 14px; font-weight: 600; margin: 0; }
+.attendance-summary { font-size: 12px; color: var(--muted); }
+
+.attendance-subheading {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  margin: 12px 0 6px;
+}
+
+.attend-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 0;
+  flex-wrap: wrap;
+}
+
+.attend-name { font-size: 13px; min-width: 90px; font-weight: 500; }
+
+.attend-tag {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 6px;
+}
+
+.attend-options { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+
+.attend-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  cursor: pointer;
+  color: var(--muted);
+  user-select: none;
+  background: var(--card-bg);
+}
+
+.attend-option input { width: 13px; height: 13px; cursor: pointer; margin: 0; }
+.attend-option:hover { background: #f0f0f3; }
+.attend-option.selected { font-weight: 600; }
+.attend-option.attend-present.selected { background: #dcf5e3; border-color: var(--success); color: #14532d; }
+.attend-option.attend-absent.selected { background: #ffe5e5; border-color: var(--danger); color: #a30010; }
+.attend-option.attend-excused.selected { background: #fff2d9; border-color: #b8860b; color: #8a5a00; }
+
+.guest-row .attend-name { font-style: italic; }
+
+.guest-form { display: flex; gap: 6px; margin-top: 8px; }
+.guest-form input { flex: 1; font-size: 13px; padding: 7px 9px; }
+.guest-form button { padding: 7px 12px; font-size: 13px; white-space: nowrap; }

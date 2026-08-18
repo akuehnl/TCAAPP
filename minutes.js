@@ -562,3 +562,229 @@ function buildMinutesBlock(item, readOnly) {
 
   return block;
 }
+
+// ---- Attendance ----
+//
+// Recorded at the top of the agenda before discussion starts. Open to any
+// member, like the rest of the minutes. Guests are written in free-text since
+// by definition they are not on the roster.
+
+const ATTEND_OPTIONS = [
+  ["present", "Present"],
+  ["absent", "Absent"],
+  ["excused", "Excused"],
+];
+
+let attendance = [];
+
+async function loadAttendance(date) {
+  const { data, error } = await supabaseClient
+    .from("meeting_attendance").select("*")
+    .eq("meeting_date", date)
+    .order("inserted_at", { ascending: true });
+  if (error) {
+    console.error(error);
+    attendance = [];
+    return;
+  }
+  attendance = data;
+}
+
+function attendanceFor(memberId) {
+  return attendance.find((a) => a.member_id === memberId) ?? null;
+}
+
+function guestRows() {
+  return attendance.filter((a) => a.guest_name);
+}
+
+async function setAttendance(memberId, status) {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return;
+
+  const existing = attendanceFor(memberId);
+  if (existing) {
+    const { error } = await supabaseClient
+      .from("meeting_attendance").update({ status }).eq("id", existing.id);
+    if (error) console.error(error);
+  } else {
+    const { error } = await supabaseClient.from("meeting_attendance").insert({
+      meeting_date: meetingDate,
+      member_id: memberId,
+      status,
+      recorded_by: currentMember?.id ?? null,
+      user_id: user.id,
+    });
+    if (error) console.error(error);
+  }
+  await loadAgenda();
+}
+
+async function addGuest(name) {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return;
+
+  const { error } = await supabaseClient.from("meeting_attendance").insert({
+    meeting_date: meetingDate,
+    guest_name: name,
+    status: "present",
+    recorded_by: currentMember?.id ?? null,
+    user_id: user.id,
+  });
+  if (error) console.error(error);
+  await loadAgenda();
+}
+
+async function removeAttendance(id) {
+  const { error } = await supabaseClient.from("meeting_attendance").delete().eq("id", id);
+  if (error) console.error(error);
+  await loadAgenda();
+}
+
+function attendanceSummary() {
+  const present = attendance.filter((a) => a.status === "present");
+  const voting = present.filter((a) => a.member_id && membersById.get(a.member_id)?.can_vote !== false);
+  const eligible = votingMembers().length;
+  const guests = guestRows().filter((a) => a.status === "present").length;
+
+  const bits = [`${present.length} present`];
+  const absent = attendance.filter((a) => a.status === "absent").length;
+  const excused = attendance.filter((a) => a.status === "excused").length;
+  if (absent) bits.push(`${absent} absent`);
+  if (excused) bits.push(`${excused} excused`);
+  if (guests) bits.push(`${guests} guest${guests === 1 ? "" : "s"}`);
+  // Stated as a count rather than a verdict — quorum rules are the board's to
+  // define, not this app's to assume.
+  bits.push(`${voting.length} of ${eligible} voting members`);
+  return bits.join("  ·  ");
+}
+
+function buildAttendanceBlock(readOnly) {
+  const block = document.createElement("section");
+  block.className = "attendance-block";
+
+  const head = document.createElement("div");
+  head.className = "attendance-head";
+
+  const title = document.createElement("h3");
+  title.className = "attendance-title";
+  title.textContent = "Attendance";
+
+  const summary = document.createElement("span");
+  summary.className = "attendance-summary";
+  summary.textContent = attendance.length ? attendanceSummary() : "Not yet taken";
+
+  head.append(title, summary);
+  block.appendChild(head);
+
+  // Everyone on the roster, voting or not — attendance is about who is in the
+  // room, not who may vote.
+  for (const member of members.filter((m) => m.is_active)) {
+    const row = document.createElement("div");
+    row.className = "attend-row";
+
+    const name = document.createElement("span");
+    name.className = "attend-name";
+    name.textContent = member.name;
+    if (member.can_vote === false) {
+      const tag = document.createElement("span");
+      tag.className = "attend-tag";
+      tag.textContent = "non-voting";
+      name.appendChild(tag);
+    }
+    row.appendChild(name);
+
+    const current = attendanceFor(member.id)?.status ?? null;
+
+    const options = document.createElement("div");
+    options.className = "attend-options";
+    for (const [value, label] of ATTEND_OPTIONS) {
+      const option = document.createElement("label");
+      option.className = "attend-option attend-" + value;
+      if (current === value) option.classList.add("selected");
+
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = `attend-${meetingDate}-${member.id}`;
+      input.checked = current === value;
+      input.disabled = readOnly;
+      input.addEventListener("change", () => {
+        if (input.checked) setAttendance(member.id, value);
+      });
+
+      const text = document.createElement("span");
+      text.textContent = label;
+      option.append(input, text);
+      options.appendChild(option);
+    }
+
+    if (readOnly && !current) {
+      const none = document.createElement("span");
+      none.className = "roll-none";
+      none.textContent = "—";
+      options.appendChild(none);
+    }
+
+    row.appendChild(options);
+    block.appendChild(row);
+  }
+
+  // --- Guests ---
+  const guests = guestRows();
+  if (guests.length || !readOnly) {
+    const heading = document.createElement("div");
+    heading.className = "attendance-subheading";
+    heading.textContent = "Guests";
+    block.appendChild(heading);
+  }
+
+  for (const guest of guests) {
+    const row = document.createElement("div");
+    row.className = "attend-row guest-row";
+
+    const name = document.createElement("span");
+    name.className = "attend-name";
+    name.textContent = guest.guest_name;
+    row.appendChild(name);
+
+    if (!readOnly) {
+      row.appendChild(miniButton("\u2715", () => removeAttendance(guest.id), "icon-btn delete-btn"));
+    }
+    block.appendChild(row);
+  }
+
+  if (!guests.length && readOnly) {
+    const none = document.createElement("p");
+    none.className = "minute-none";
+    none.textContent = "No guests recorded.";
+    block.appendChild(none);
+  }
+
+  if (!readOnly) {
+    const form = document.createElement("form");
+    form.className = "guest-form";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.maxLength = 120;
+    input.required = true;
+    input.placeholder = "Name of someone attending who is not on the roster";
+
+    const submit = document.createElement("button");
+    submit.type = "submit";
+    submit.textContent = "Add guest";
+
+    form.append(input, submit);
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = input.value.trim();
+      if (!name) return;
+      submit.disabled = true;
+      await addGuest(name);
+      submit.disabled = false;
+    });
+    block.appendChild(form);
+  }
+
+  return block;
+}
