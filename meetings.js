@@ -102,6 +102,7 @@ function setMeetingSubView(view) {
   completedView.classList.toggle("hidden", view !== "completed");
   // The date stepper and per-meeting controls make no sense in the archive.
   meetingToolbar.classList.toggle("hidden", view === "completed");
+  syncRoute();
   if (view === "completed") loadCompletedMeetings();
   else renderMeetings();
 }
@@ -112,15 +113,26 @@ tabCompleted.addEventListener("click", () => setMeetingSubView("completed"));
 
 meetingPrev.addEventListener("click", async () => {
   meetingDate = shiftMeeting(meetingDate, -1);
+  syncRoute();
   await loadAgenda();
 });
 
 meetingNext.addEventListener("click", async () => {
   meetingDate = shiftMeeting(meetingDate, 1);
+  syncRoute();
   await loadAgenda();
 });
 
 // ---- Data ----
+
+// Restores the week and tab the URL asks for before the first load, so a
+// refresh while looking at a past agenda stays on that meeting instead of
+// snapping forward to the next Tuesday.
+async function applyMeetingRoute(route) {
+  if (route?.date) meetingDate = route.date;
+  await loadAgenda();
+  if (route?.section === "meetings" && route.view) setMeetingSubView(route.view);
+}
 
 async function loadAgenda() {
   if (!meetingDate) meetingDate = toIsoDate(upcomingMeeting());

@@ -269,6 +269,13 @@ under repo **Settings → Pages**: deploy from branch `main`, folder `/ (root)`.
   trigger so it stays correct whether a task is closed from the app, the SQL
   editor, or an import. The 15 pre-completed seed rows had no real completion
   date on record, so they were backfilled from their due dates.
+- The URL hash carries the current section, tab and meeting week — e.g.
+  `#/meetings/agenda/2026-09-01` — so a refresh comes back to where you were
+  rather than the Tasks board, and a link can be handed to someone else.
+  Switching tabs rewrites the hash in place instead of pushing a history
+  entry, so Back still leaves the app rather than walking back through your
+  own clicking. An unrecognised hash falls back to Tasks, and one arrived at
+  while signed out survives the sign-in.
 - Still to build: a calendar view on the main board, plotting each task's
   start-by → due span.
 - Daily digest / overdue reminder emails were scoped out for now.

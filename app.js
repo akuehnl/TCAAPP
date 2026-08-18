@@ -71,7 +71,8 @@ let members = [];
 let membersById = new Map();
 let currentMember = null;   // the signed-in user's roster row
 let editingId = null;       // null = creating a new task
-let currentView = "today";  // "today" | "all" | "mine"
+let currentView = "today";  // "today" | "all" | "mine" | "archive"
+let currentSection = "tasks";
 
 function showScreen(screen) {
   for (const el of [loadingEl, authScreen, notMemberScreen, todoScreen]) {
@@ -217,6 +218,63 @@ function scheduleNote(task, bucket) {
   return bits.join(" · ");
 }
 
+// ---- Routing ----
+//
+// Which section and tab you are on lives in the URL hash, so a refresh puts
+// you back where you were instead of on the Tasks board — and a link can be
+// pasted to someone else. Written with replaceState rather than a new history
+// entry: switching tabs is not navigation, and pushing one per click would
+// bury the back button under your own clicking around.
+
+const TASK_VIEWS = ["today", "all", "mine", "archive"];
+const MEETING_VIEWS = ["suggestions", "agenda", "completed"];
+
+// Anything unrecognised — an old link, a hand-typed hash — comes back null so
+// the caller falls back to the defaults rather than half-applying a route.
+function parseRoute() {
+  const parts = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
+  if (!SECTIONS.includes(parts[0])) return null;
+
+  const route = { section: parts[0] };
+  if (route.section === "tasks" && TASK_VIEWS.includes(parts[1])) {
+    route.view = parts[1];
+  }
+  if (route.section === "meetings") {
+    if (MEETING_VIEWS.includes(parts[1])) route.view = parts[1];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(parts[2] ?? "")) route.date = parts[2];
+  }
+  return route;
+}
+
+function syncRoute() {
+  // Signing out resets the section, which would otherwise overwrite the hash
+  // of someone who arrived on a shared link and has not signed in yet.
+  if (!currentMember) return;
+
+  const parts = [currentSection];
+  if (currentSection === "tasks") parts.push(currentView);
+  if (currentSection === "meetings") {
+    parts.push(meetingSubView);
+    // The archive spans every past meeting, so pinning one week's date to it
+    // would send you somewhere else on the way back in.
+    if (meetingSubView !== "completed" && meetingDate) parts.push(meetingDate);
+  }
+
+  const hash = "#/" + parts.join("/");
+  if (location.hash !== hash) history.replaceState(null, "", hash);
+}
+
+// Covers a hash edited by hand, or a link pasted into a tab that is already
+// open — neither reloads the page, so nothing else would notice.
+window.addEventListener("hashchange", () => {
+  const route = parseRoute();
+  if (!currentMember || !route) return;
+
+  if (route.section === "tasks" && route.view) setView(route.view);
+  if (route.section === "meetings") applyMeetingRoute(route);
+  setSection(route.section);
+});
+
 // ---- Sections ----
 //
 // Defined here rather than in a section's own file because app.js loads
@@ -225,12 +283,14 @@ function scheduleNote(task, bucket) {
 const SECTIONS = ["tasks", "meetings", "people"];
 
 function setSection(name) {
+  currentSection = name;
   for (const section of SECTIONS) {
     $("section-" + section).classList.toggle("active", section === name);
     $(section + "-section").classList.toggle("hidden", section !== name);
   }
   if (name === "meetings") renderMeetings();
   if (name === "people") renderPeople();
+  syncRoute();
 }
 
 for (const section of SECTIONS) {
@@ -253,6 +313,7 @@ function setView(view) {
   // The per-person filter is meaningless once the list is already narrowed.
   assigneeFilterWrap.classList.toggle("hidden", view === "mine");
 
+  syncRoute();
   render();
 }
 
@@ -888,6 +949,11 @@ async function enterApp(session) {
   currentMember = member;
   showScreen(todoScreen);
 
+  // Read the hash before anything gets a chance to rewrite it: it says which
+  // section, tab and meeting week this load should come back to.
+  const route = parseRoute();
+  if (route?.section === "tasks" && route.view) currentView = route.view;
+
   await touchLastSeen();
   await loadMembers();
   await loadTasks();
@@ -895,8 +961,8 @@ async function enterApp(session) {
   subscribeToTasks();
 
   // Board meetings live in meetings.js, loaded after this file.
-  await loadAgenda();
-  setSection("tasks");
+  await applyMeetingRoute(route);
+  setSection(route?.section ?? "tasks");
   subscribeToAgenda();
 }
 
