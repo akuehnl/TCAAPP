@@ -53,6 +53,8 @@ whether or not they've created a login yet.
 | Josiah Warner | Board Chair | Limited — decision-making, culture, enrollment, hiring |
 | Ethan Nelson | Secretary | Limited — vendor contracts (signage, security cameras) |
 | Joe Martinez | Board Oversight | Limited — retired; errands, supply runs, church outreach, theology |
+| Elise | Staff — events & curriculum | High — no email on file yet |
+| Kate Rand | Marketing | Limited — no email on file yet |
 
 An account is linked to its roster row automatically at signup by matching
 email address. **Signing up with an address that isn't on the roster gets you
@@ -85,6 +87,8 @@ Run these in the Supabase SQL Editor **in order**, once each:
    adds the roster and switches RLS from private-per-user to shared-board.
 4. [`supabase/migration-003-capacity.sql`](supabase/migration-003-capacity.sql) —
    adds per-member daily capacity for the Today page's overload flag.
+5. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
+   loads the existing 46-task list and adds Elise and Kate to the roster.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key
 into [`config.js`](config.js), and in **Authentication → URL Configuration**
