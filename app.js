@@ -30,15 +30,18 @@ const signOutBtn = $("sign-out-btn");
 const tabToday = $("tab-today");
 const tabAll = $("tab-all");
 const tabMine = $("tab-mine");
+const tabArchive = $("tab-archive");
 
 const todayView = $("today-view");
 const boardView = $("board-view");
+const archiveView = $("archive-view");
+const archiveGroups = $("archive-groups");
+const archiveEmpty = $("archive-empty");
 const boardFilters = $("board-filters");
 const todayDateEl = $("today-date");
 const todayMembersEl = $("today-members");
 
 const newTaskBtn = $("new-task-btn");
-const hideDoneCheckbox = $("hide-done");
 const assigneeFilter = $("assignee-filter");
 const assigneeFilterWrap = $("assignee-filter-wrap");
 
@@ -221,10 +224,12 @@ function setView(view) {
   tabToday.classList.toggle("active", view === "today");
   tabAll.classList.toggle("active", view === "all");
   tabMine.classList.toggle("active", view === "mine");
+  tabArchive.classList.toggle("active", view === "archive");
 
   todayView.classList.toggle("hidden", view !== "today");
-  boardView.classList.toggle("hidden", view === "today");
-  boardFilters.classList.toggle("hidden", view === "today");
+  boardView.classList.toggle("hidden", view !== "all" && view !== "mine");
+  archiveView.classList.toggle("hidden", view !== "archive");
+  boardFilters.classList.toggle("hidden", view !== "all" && view !== "mine");
   // The per-person filter is meaningless once the list is already narrowed.
   assigneeFilterWrap.classList.toggle("hidden", view === "mine");
 
@@ -234,11 +239,12 @@ function setView(view) {
 tabToday.addEventListener("click", () => setView("today"));
 tabAll.addEventListener("click", () => setView("all"));
 tabMine.addEventListener("click", () => setView("mine"));
+tabArchive.addEventListener("click", () => setView("archive"));
 assigneeFilter.addEventListener("change", render);
-hideDoneCheckbox.addEventListener("change", render);
 
+// Completed work lives in the Archive, so the active board never shows it.
 function visibleTasks() {
-  let list = tasks;
+  let list = tasks.filter((t) => !t.is_complete);
 
   if (currentView === "mine") {
     list = list.filter((t) => currentMember && t.assignee_id === currentMember.id);
@@ -248,7 +254,6 @@ function visibleTasks() {
     list = list.filter((t) => t.assignee_id === assigneeFilter.value);
   }
 
-  if (hideDoneCheckbox.checked) list = list.filter((t) => !t.is_complete);
   return list;
 }
 
@@ -454,12 +459,16 @@ function buildMetaLine(task) {
   const parts = [];
 
   // In "My tasks" every row is mine, so the name would just be noise.
-  if (currentView === "all") {
+  if (currentView !== "mine") {
     const member = task.assignee_id ? membersById.get(task.assignee_id) : null;
     parts.push(member ? member.name : "Unassigned");
   }
 
-  if (task.due_date) {
+  // In the Archive, when it was finished matters more than when it was due.
+  if (task.is_complete) {
+    const stamp = task.completed_at || task.updated_at;
+    if (stamp) parts.push("Completed " + formatDueDate(String(stamp).slice(0, 10)));
+  } else if (task.due_date) {
     parts.push((isOverdue(task) ? "Overdue — due " : "Due ") + formatDueDate(task.due_date));
   }
 
@@ -546,6 +555,7 @@ function renderTask(task) {
 
 function updateTabCounts() {
   const open = tasks.filter((t) => !t.is_complete);
+  const done = tasks.filter((t) => t.is_complete);
   const mine = currentMember
     ? open.filter((t) => t.assignee_id === currentMember.id)
     : [];
@@ -557,6 +567,64 @@ function updateTabCounts() {
   tabToday.textContent = `Today (${todayCount})`;
   tabAll.textContent = `Shared board (${open.length})`;
   tabMine.textContent = `My tasks (${mine.length})`;
+  tabArchive.textContent = `Archive (${done.length})`;
+}
+
+// ---- Archive ----
+
+// Group key like "2026-08"; completion date can be missing on rows that
+// predate migration 004, so fall back to when the row was created.
+function archiveMonthKey(task) {
+  const stamp = task.completed_at || task.updated_at || task.inserted_at;
+  return stamp ? String(stamp).slice(0, 7) : "unknown";
+}
+
+function formatMonthKey(key) {
+  if (key === "unknown") return "Date unknown";
+  const [y, m] = key.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString(undefined, {
+    month: "long", year: "numeric",
+  });
+}
+
+function renderArchive() {
+  const done = tasks.filter((t) => t.is_complete);
+
+  archiveGroups.innerHTML = "";
+  archiveEmpty.classList.toggle("hidden", done.length > 0);
+  if (!done.length) return;
+
+  const byMonth = new Map();
+  for (const task of done) {
+    const key = archiveMonthKey(task);
+    if (!byMonth.has(key)) byMonth.set(key, []);
+    byMonth.get(key).push(task);
+  }
+
+  // Newest month first; "unknown" sinks to the bottom.
+  const keys = [...byMonth.keys()].sort((a, b) => {
+    if (a === "unknown") return 1;
+    if (b === "unknown") return -1;
+    return b.localeCompare(a);
+  });
+
+  for (const key of keys) {
+    const group = byMonth.get(key);
+
+    const heading = document.createElement("h3");
+    heading.className = "archive-month";
+    heading.textContent = `${formatMonthKey(key)} (${group.length})`;
+    archiveGroups.appendChild(heading);
+
+    const ul = document.createElement("ul");
+    ul.className = "archive-list";
+    for (const task of group.sort((a, b) =>
+      String(b.completed_at ?? "").localeCompare(String(a.completed_at ?? ""))
+    )) {
+      ul.appendChild(renderTask(task));
+    }
+    archiveGroups.appendChild(ul);
+  }
 }
 
 // ---- Today view ----
@@ -722,13 +790,9 @@ function renderToday() {
 
 function emptyMessage() {
   if (tasks.length === 0) return "No tasks yet — add one above.";
-  if (currentView === "mine") {
-    return hideDoneCheckbox.checked
-      ? "Nothing open assigned to you right now."
-      : "Nothing is assigned to you yet.";
-  }
-  if (assigneeFilter.value) return "No tasks match this filter.";
-  return "No open tasks. Uncheck “Hide done” to see completed ones.";
+  if (currentView === "mine") return "Nothing open assigned to you right now.";
+  if (assigneeFilter.value) return "No open tasks match this filter.";
+  return "No open tasks — everything is in the Archive.";
 }
 
 function renderBoard() {
@@ -745,6 +809,7 @@ function renderBoard() {
 
 function render() {
   if (currentView === "today") renderToday();
+  else if (currentView === "archive") renderArchive();
   else renderBoard();
   updateTabCounts();
 }

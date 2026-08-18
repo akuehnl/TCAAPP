@@ -464,3 +464,27 @@ button:disabled { opacity: 0.6; cursor: default; }
   .card { padding: 20px; }
   .task-form { grid-template-columns: 1fr; }
 }
+
+/* ---- Archive ---- */
+
+.archive-month {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  margin: 20px 0 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.archive-month:first-child { margin-top: 0; }
+
+.archive-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}

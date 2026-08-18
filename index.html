@@ -54,6 +54,7 @@
       <button type="button" class="tab active" id="tab-today" role="tab">Today</button>
       <button type="button" class="tab" id="tab-all" role="tab">Shared board</button>
       <button type="button" class="tab" id="tab-mine" role="tab">My tasks</button>
+      <button type="button" class="tab" id="tab-archive" role="tab">Archive</button>
     </div>
 
     <div class="toolbar">
@@ -66,9 +67,6 @@
             <option value="">Anyone</option>
             <option value="unassigned">Unassigned</option>
           </select>
-        </label>
-        <label class="checkbox-label">
-          <input type="checkbox" id="hide-done" /> Hide done
         </label>
       </div>
     </div>
@@ -149,6 +147,12 @@
     <section id="board-view">
       <ul id="task-list"></ul>
       <p id="empty-state" class="message hidden"></p>
+    </section>
+
+    <!-- Completed work, grouped by the month it was finished -->
+    <section id="archive-view" class="hidden">
+      <div id="archive-groups"></div>
+      <p id="archive-empty" class="message hidden">Nothing archived yet — completed tasks land here.</p>
     </section>
   </section>
 

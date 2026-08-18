@@ -12,11 +12,14 @@ Live at **https://akuehnl.github.io/TCAAPP/**
 | --- | --- |
 | **Today** | Daily overview — every member's work for today on one page, overdue rolled in, with checkboxes to mark done |
 | **Shared board** | Every task, with an Assignee filter (Anyone / Unassigned / any member) |
-| **My tasks** | Only tasks assigned to the signed-in member |
+| **My tasks** | Only open tasks assigned to the signed-in member |
+| **Archive** | Completed tasks, grouped by the month they were finished |
 
-Tab labels carry live counts. The list views sort open-first, then soonest due
-date (undated last), then priority. "Hide done" filters out completed tasks,
-and overdue tasks are outlined in red.
+Tab labels carry live counts. **Completed tasks leave the active board
+entirely** and move to the Archive, so Shared board and My tasks only ever show
+open work. Unchecking a task in the Archive returns it to the board. The list
+views sort by soonest due date (undated last), then priority; overdue tasks are
+outlined in red.
 
 ## How the Today page decides what's due
 
@@ -87,7 +90,9 @@ Run these in the Supabase SQL Editor **in order**, once each:
    adds the roster and switches RLS from private-per-user to shared-board.
 4. [`supabase/migration-003-capacity.sql`](supabase/migration-003-capacity.sql) —
    adds per-member daily capacity for the Today page's overload flag.
-5. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
+5. [`supabase/migration-004-archive.sql`](supabase/migration-004-archive.sql) —
+   adds `completed_at` and the Archive view.
+6. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
    loads the existing 46-task list and adds Elise and Kate to the roster.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key
@@ -115,7 +120,10 @@ under repo **Settings → Pages**: deploy from branch `main`, folder `/ (root)`.
 - The board syncs live across tabs and devices via Supabase Realtime.
 - Priority is manual. The Today page derives urgency from lead time instead,
   so priority acts as a manual tiebreaker rather than the main signal.
-- Still to build: a calendar view on the main board (plotting each task's
-  start-by → due span), and an Archive so completed tasks leave the active
-  list instead of accumulating.
+- Completed tasks carry a `completed_at` timestamp, kept in sync by a database
+  trigger so it stays correct whether a task is closed from the app, the SQL
+  editor, or an import. The 15 pre-completed seed rows had no real completion
+  date on record, so they were backfilled from their due dates.
+- Still to build: a calendar view on the main board, plotting each task's
+  start-by → due span.
 - Daily digest / overdue reminder emails were scoped out for now.
