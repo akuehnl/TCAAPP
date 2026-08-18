@@ -5,11 +5,6 @@
 
 const MEETING_WEEKDAY = 2; // Tuesday
 
-const sectionTasksBtn = $("section-tasks");
-const sectionMeetingsBtn = $("section-meetings");
-const tasksSection = $("tasks-section");
-const meetingsSection = $("meetings-section");
-
 const meetingPrev = $("meeting-prev");
 const meetingNext = $("meeting-next");
 const meetingDateEl = $("meeting-date");
@@ -43,8 +38,10 @@ let meetingSubView = "suggestions"; // "suggestions" | "agenda"
 let editingAgendaId = null;
 let agendaChannel = null;
 
+// Admins carry every chair power, so the two are checked together
+// everywhere the agenda is managed.
 function isChair() {
-  return currentMember?.is_chair === true;
+  return currentMember?.is_chair === true || currentMember?.is_admin === true;
 }
 
 // ---- Dates ----
@@ -83,19 +80,7 @@ function formatMinutes(total) {
   return `${rest}m`;
 }
 
-// ---- Section switching ----
-
-function setSection(name) {
-  const onTasks = name === "tasks";
-  sectionTasksBtn.classList.toggle("active", onTasks);
-  sectionMeetingsBtn.classList.toggle("active", !onTasks);
-  tasksSection.classList.toggle("hidden", !onTasks);
-  meetingsSection.classList.toggle("hidden", onTasks);
-  if (!onTasks) renderMeetings();
-}
-
-sectionTasksBtn.addEventListener("click", () => setSection("tasks"));
-sectionMeetingsBtn.addEventListener("click", () => setSection("meetings"));
+// ---- Sub-views ----
 
 function setMeetingSubView(view) {
   meetingSubView = view;

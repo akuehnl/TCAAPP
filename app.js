@@ -217,6 +217,26 @@ function scheduleNote(task, bucket) {
   return bits.join(" · ");
 }
 
+// ---- Sections ----
+//
+// Defined here rather than in a section's own file because app.js loads
+// first and the session lifecycle needs to switch sections.
+
+const SECTIONS = ["tasks", "meetings", "people"];
+
+function setSection(name) {
+  for (const section of SECTIONS) {
+    $("section-" + section).classList.toggle("active", section === name);
+    $(section + "-section").classList.toggle("hidden", section !== name);
+  }
+  if (name === "meetings") renderMeetings();
+  if (name === "people") renderPeople();
+}
+
+for (const section of SECTIONS) {
+  $("section-" + section).addEventListener("click", () => setSection(section));
+}
+
 // ---- Views ----
 
 function setView(view) {
@@ -361,6 +381,14 @@ async function loadMembers() {
 
   members = data;
   membersById = new Map(members.map((m) => [m.id, m]));
+
+  // Re-read our own row so a chair or admin change takes effect without
+  // signing out and back in.
+  if (currentMember) {
+    const fresh = membersById.get(currentMember.id);
+    if (fresh) currentMember = fresh;
+  }
+
   populateMemberSelects();
 }
 

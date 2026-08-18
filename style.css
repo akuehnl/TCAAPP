@@ -646,3 +646,55 @@ button:disabled { opacity: 0.6; cursor: default; }
 }
 
 .approve-btn:hover { background: #15803d; }
+
+/* ---- People ---- */
+
+.section-intro {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 16px;
+}
+
+#people-list { display: flex; flex-direction: column; gap: 8px; }
+
+.person-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.person-row.inactive { opacity: 0.55; }
+
+.chair-radio {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+.chair-radio:disabled { cursor: not-allowed; }
+
+.person-body { flex: 1; min-width: 0; }
+
+.person-name { font-size: 15px; font-weight: 600; }
+
+.person-meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+  word-break: break-word;
+}
+
+.person-notes {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 5px;
+  font-style: italic;
+}
+
+.chair-badge { background: #ede4ff; color: #5b21b6; }
+.admin-badge { background: #ffe9d6; color: #9a4a00; }

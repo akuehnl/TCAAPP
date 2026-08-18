@@ -53,6 +53,7 @@
     <nav class="sections">
       <button type="button" class="section-btn active" id="section-tasks">Tasks</button>
       <button type="button" class="section-btn" id="section-meetings">Board Meetings</button>
+      <button type="button" class="section-btn" id="section-people">People</button>
     </nav>
 
     <div id="tasks-section">
@@ -236,6 +237,13 @@
       </div>
 
     </div><!-- /#meetings-section -->
+
+    <!-- ================= People ================= -->
+    <div id="people-section" class="hidden">
+      <p class="section-intro" id="people-intro"></p>
+      <div id="people-list"></div>
+      <p class="message" id="people-message"></p>
+    </div><!-- /#people-section -->
   </section>
 
   <p id="loading" class="message">Loading…</p>
@@ -246,5 +254,6 @@
 <script src="config.js"></script>
 <script src="app.js"></script>
 <script src="meetings.js"></script>
+<script src="people.js"></script>
 </body>
 </html>

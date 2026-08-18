@@ -12,6 +12,7 @@ Two sections, switched from the top of the page:
 | --- | --- |
 | **Tasks** | The board's work — who owns what, what's due, what needs starting today |
 | **Board Meetings** | Agenda suggestions and the chair-approved agenda for each Tuesday meeting |
+| **People** | The roster — who's active, who chairs the board, who administers it |
 
 ## Task views
 
@@ -67,12 +68,32 @@ The estimated meeting length sits at the top, summed from the approved items,
 alongside the motion count and how much more time the pending suggestions
 would add. Past 90 minutes the estimate turns red.
 
-**Only the chair** (currently Josiah, set by `members.is_chair`) can approve,
-decline, reorder, or edit approved items, and only the chair can add an item
-straight to the agenda without going through suggestions. Everyone else can
-edit or withdraw their own suggestions while those are still pending. This is
-enforced by Row Level Security policies, not just hidden in the UI, so it
-holds even against direct API calls.
+**Only the chair or an admin** can approve, decline, reorder, or edit approved
+items, or add an item straight to the agenda without going through
+suggestions. Everyone else can edit or withdraw their own suggestions while
+those are still pending. This is enforced by Row Level Security policies, not
+just hidden in the UI, so it holds even against direct API calls.
+
+## Roles
+
+| Role | Column | Who | Can |
+| --- | --- | --- | --- |
+| Admin | `is_admin` | Aden | Everything a chair can, plus change the chair and activate/deactivate members |
+| Board Chair | `is_chair` | Josiah (changeable in-app) | Approve, decline, reorder and edit agenda items |
+| Member | — | Everyone else on the roster | All task work; suggest agenda items and edit their own pending ones |
+
+The chair is changed from the **People** section — no code or SQL edit. Because
+every permission check reads the `members` table at query time, a change takes
+effect immediately for everyone, without anyone signing out.
+
+Both roster changes go through database functions rather than direct table
+writes, so the invariants live in one place:
+
+- `set_board_chair()` sets every row in a single statement, so there is never a
+  moment with two chairs or none, and refuses inactive members.
+- `set_member_active()` refuses to deactivate you (no locking yourself out) or
+  the sitting chair (hand the role over first).
+- A trigger blocks `is_chair` / `is_admin` changes that bypass those functions.
 
 ## Board roster
 
@@ -124,7 +145,9 @@ Run these in the Supabase SQL Editor **in order**, once each:
    adds `completed_at` and the Archive view.
 6. [`supabase/migration-005-board-meetings.sql`](supabase/migration-005-board-meetings.sql) —
    adds the Board Meetings section, the `is_chair` flag, and its RLS policies.
-7. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
+7. [`supabase/migration-006-admin-and-chair.sql`](supabase/migration-006-admin-and-chair.sql) —
+   adds the admin role and in-app chair switching.
+8. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
    loads the existing 46-task list and adds Elise and Kate to the roster.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key
