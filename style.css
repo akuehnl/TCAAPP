@@ -1005,3 +1005,11 @@ button:disabled { opacity: 0.6; cursor: default; }
 }
 
 .reopen-btn:hover { background: rgba(0, 113, 227, 0.08); color: var(--accent); }
+
+.person-seen {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.person-seen.never { font-style: italic; opacity: 0.75; }

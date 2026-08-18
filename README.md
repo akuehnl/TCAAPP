@@ -163,6 +163,16 @@ From the People section an admin can change the chair, grant or revoke admin,
 activate or deactivate someone, and add a new person. Editing an existing
 person's role, email, or capacity is still a SQL edit.
 
+Each row also shows when that person **last used the app** — relative for
+recent activity ("5 hours ago"), a date once it is over a week old, with the
+exact timestamp on hover. This is tracked in `members.last_seen_at` rather
+than read from `auth.users.last_sign_in_at`, because sessions persist for
+weeks: someone can open the app daily without ever signing in again, and that
+column would show a stale date from their first login. The stamp is written
+when the app opens and refreshed when a tab that was left open is returned to,
+throttled to at most once every 10 minutes. It is visible to everyone on the
+roster.
+
 ## Board roster
 
 The five members are seeded in the database, so they can be assigned tasks
@@ -225,7 +235,9 @@ Run these in the Supabase SQL Editor **in order**, once each:
     adds meeting attendance and guest write-ins.
 12. [`supabase/migration-011-attendance-board-only.sql`](supabase/migration-011-attendance-board-only.sql) —
     limits the named attendance roll to board members.
-13. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
+13. [`supabase/migration-012-last-seen.sql`](supabase/migration-012-last-seen.sql) —
+    tracks when each person last used the app.
+14. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
     loads the existing 46-task list and adds Elise and Kate to the roster.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key

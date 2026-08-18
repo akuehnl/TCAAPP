@@ -182,6 +182,31 @@ async function setMemberVoting(memberId, canVote) {
   renderPeople();
 }
 
+// Relative for recent activity, since "3 hours ago" reads faster than a
+// timestamp; falls back to a date once it is old enough that the exact day
+// matters more than the elapsed time.
+function formatLastSeen(iso) {
+  if (!iso) return null;
+
+  const then = new Date(iso);
+  const mins = Math.floor((Date.now() - then.getTime()) / 60000);
+
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days} days ago`;
+
+  return then.toLocaleDateString(undefined, {
+    month: "short", day: "numeric",
+    year: then.getFullYear() === new Date().getFullYear() ? undefined : "numeric",
+  });
+}
+
 function roleBadge(text, className) {
   const badge = document.createElement("span");
   badge.className = "badge " + className;
@@ -240,6 +265,18 @@ function renderPersonRow(member) {
   }
   meta.textContent = bits.join("  ·  ");
   body.appendChild(meta);
+
+  const seen = document.createElement("div");
+  seen.className = "person-seen";
+  const stamp = formatLastSeen(member.last_seen_at);
+  if (stamp) {
+    seen.textContent = "Last active " + stamp;
+    seen.title = new Date(member.last_seen_at).toLocaleString();
+  } else {
+    seen.classList.add("never");
+    seen.textContent = member.email ? "Never opened the app" : "No login yet";
+  }
+  body.appendChild(seen);
 
   if (member.notes) {
     const notes = document.createElement("div");

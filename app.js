@@ -888,6 +888,7 @@ async function enterApp(session) {
   currentMember = member;
   showScreen(todoScreen);
 
+  await touchLastSeen();
   await loadMembers();
   await loadTasks();
   setView(currentView);
@@ -899,6 +900,27 @@ async function enterApp(session) {
   subscribeToAgenda();
 }
 
+// Stamped when the app is opened, and again when a tab that was left open is
+// returned to — throttled, so a tab sitting open all day does not write once a
+// second. Without the refresh, a browser left open for a week would still
+// report the moment it was first loaded.
+let lastSeenStampedAt = 0;
+const LAST_SEEN_THROTTLE_MS = 10 * 60 * 1000;
+
+async function touchLastSeen(force = false) {
+  if (!currentMember) return;
+  const now = Date.now();
+  if (!force && now - lastSeenStampedAt < LAST_SEEN_THROTTLE_MS) return;
+  lastSeenStampedAt = now;
+
+  const { error } = await supabaseClient.rpc("touch_last_seen");
+  if (error) console.error(error);
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") touchLastSeen();
+});
+
 function exitApp() {
   if (realtimeChannel) {
     supabaseClient.removeChannel(realtimeChannel);
@@ -908,6 +930,7 @@ function exitApp() {
   members = [];
   membersById = new Map();
   currentMember = null;
+  lastSeenStampedAt = 0;
   taskList.innerHTML = "";
   closeForm();
   resetMeetings();
