@@ -864,6 +864,11 @@ async function enterApp(session) {
   await loadTasks();
   setView(currentView);
   subscribeToTasks();
+
+  // Board meetings live in meetings.js, loaded after this file.
+  await loadAgenda();
+  setSection("tasks");
+  subscribeToAgenda();
 }
 
 function exitApp() {
@@ -877,27 +882,33 @@ function exitApp() {
   currentMember = null;
   taskList.innerHTML = "";
   closeForm();
+  resetMeetings();
   authForm.reset();
   setMessage(authMessage, "");
   showScreen(authScreen);
 }
 
-supabaseClient.auth.onAuthStateChange((_event, session) => {
-  if (session) enterApp(session);
-  else exitApp();
-});
+// Wait for DOMContentLoaded before touching auth. The session callbacks reach
+// into meetings.js, a separate script that has not been evaluated while this
+// file is still running — starting any earlier races it.
+document.addEventListener("DOMContentLoaded", () => {
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    if (session) enterApp(session);
+    else exitApp();
+  });
 
-// A failure here used to leave the page stuck on "Loading…" forever, so fall
-// back to the sign-in screen rather than a dead end.
-(async function init() {
-  try {
-    const { data: { session }, error } = await supabaseClient.auth.getSession();
-    if (error) throw error;
-    if (session) await enterApp(session);
-    else showScreen(authScreen);
-  } catch (error) {
-    console.error(error);
-    showScreen(authScreen);
-    setMessage(authMessage, "Couldn't restore your session — please sign in again.", "error");
-  }
-})();
+  // A failure here used to leave the page stuck on "Loading…" forever, so
+  // fall back to the sign-in screen rather than a dead end.
+  (async function init() {
+    try {
+      const { data: { session }, error } = await supabaseClient.auth.getSession();
+      if (error) throw error;
+      if (session) await enterApp(session);
+      else showScreen(authScreen);
+    } catch (error) {
+      console.error(error);
+      showScreen(authScreen);
+      setMessage(authMessage, "Couldn't restore your session — please sign in again.", "error");
+    }
+  })();
+});

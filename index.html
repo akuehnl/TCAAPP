@@ -50,6 +50,13 @@
       </div>
     </div>
 
+    <nav class="sections">
+      <button type="button" class="section-btn active" id="section-tasks">Tasks</button>
+      <button type="button" class="section-btn" id="section-meetings">Board Meetings</button>
+    </nav>
+
+    <div id="tasks-section">
+
     <div class="tabs" role="tablist">
       <button type="button" class="tab active" id="tab-today" role="tab">Today</button>
       <button type="button" class="tab" id="tab-all" role="tab">Shared board</button>
@@ -154,6 +161,81 @@
       <div id="archive-groups"></div>
       <p id="archive-empty" class="message hidden">Nothing archived yet — completed tasks land here.</p>
     </section>
+
+    </div><!-- /#tasks-section -->
+
+    <!-- ================= Board Meetings ================= -->
+    <div id="meetings-section" class="hidden">
+
+      <div class="meeting-nav">
+        <button type="button" class="icon-btn" id="meeting-prev" title="Previous meeting">‹</button>
+        <div class="meeting-heading">
+          <span class="meeting-label">Board meeting</span>
+          <span class="meeting-date" id="meeting-date"></span>
+        </div>
+        <button type="button" class="icon-btn" id="meeting-next" title="Next meeting">›</button>
+      </div>
+
+      <div class="meeting-summary" id="meeting-summary"></div>
+
+      <div class="tabs" role="tablist">
+        <button type="button" class="tab active" id="tab-suggestions" role="tab">Suggestions</button>
+        <button type="button" class="tab" id="tab-agenda" role="tab">Approved agenda</button>
+      </div>
+
+      <div class="toolbar">
+        <button type="button" id="new-agenda-btn">+ Suggest an item</button>
+      </div>
+
+      <form id="agenda-form" class="task-form hidden">
+        <h2 id="agenda-form-heading">Suggest an agenda item</h2>
+
+        <div class="field full">
+          <label for="a-title">Topic</label>
+          <input type="text" id="a-title" required maxlength="300" />
+        </div>
+
+        <div class="field full">
+          <label for="a-description">Description</label>
+          <textarea id="a-description" rows="3" placeholder="What needs discussing, and what does the board need to decide?"></textarea>
+        </div>
+
+        <div class="field">
+          <label for="a-minutes">Estimated time (minutes)</label>
+          <input type="number" id="a-minutes" min="0" max="480" step="5" value="10" />
+        </div>
+
+        <div class="field">
+          <label>Motion</label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="a-motion" /> Puts forward a motion to vote on
+          </label>
+        </div>
+
+        <div class="field full hidden" id="a-chair-direct">
+          <label class="checkbox-label">
+            <input type="checkbox" id="a-approve-now" /> Add straight to the approved agenda
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" id="a-save">Submit suggestion</button>
+          <button type="button" id="a-cancel" class="secondary">Cancel</button>
+          <span id="agenda-message" class="message"></span>
+        </div>
+      </form>
+
+      <div id="suggestions-view">
+        <ul id="suggestion-list" class="agenda-list"></ul>
+        <p id="suggestions-empty" class="message hidden"></p>
+      </div>
+
+      <div id="agenda-view" class="hidden">
+        <ol id="agenda-list" class="agenda-list ordered"></ol>
+        <p id="agenda-empty" class="message hidden"></p>
+      </div>
+
+    </div><!-- /#meetings-section -->
   </section>
 
   <p id="loading" class="message">Loading…</p>
@@ -163,5 +245,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
+<script src="meetings.js"></script>
 </body>
 </html>

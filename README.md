@@ -1,12 +1,19 @@
 # TCA Tasks
 
-A shared task board for the Tyndale Classical Academy board. Static frontend
+A shared workspace for the Tyndale Classical Academy board. Static frontend
 (HTML/CSS/JS, no build step) backed by [Supabase](https://supabase.com)
 (Postgres + Auth), hosted free on GitHub Pages.
 
 Live at **https://akuehnl.github.io/TCAAPP/**
 
-## Views
+Two sections, switched from the top of the page:
+
+| Section | Purpose |
+| --- | --- |
+| **Tasks** | The board's work — who owns what, what's due, what needs starting today |
+| **Board Meetings** | Agenda suggestions and the chair-approved agenda for each Tuesday meeting |
+
+## Task views
 
 | View | Shows |
 | --- | --- |
@@ -43,6 +50,29 @@ for high-bandwidth members, 1h/day for limited). Going over turns the bar red.
 
 Tasks with no due date can't produce a `start_by`, so they appear in a separate
 "No due date" bucket rather than disappearing, and don't count toward load.
+
+## Board Meetings
+
+Meetings are weekly on **Tuesdays**. The date shown defaults to the next
+Tuesday (on a Tuesday it stays on that day rather than skipping a week), and
+the arrows step back and forward a week at a time, so past agendas stay
+readable.
+
+| Tab | Purpose |
+| --- | --- |
+| **Suggestions** | Anyone on the roster proposes a topic: title, description, estimated minutes, and whether it puts forward a motion to vote on |
+| **Approved agenda** | What the chair has accepted, in the order it will be taken, numbered |
+
+The estimated meeting length sits at the top, summed from the approved items,
+alongside the motion count and how much more time the pending suggestions
+would add. Past 90 minutes the estimate turns red.
+
+**Only the chair** (currently Josiah, set by `members.is_chair`) can approve,
+decline, reorder, or edit approved items, and only the chair can add an item
+straight to the agenda without going through suggestions. Everyone else can
+edit or withdraw their own suggestions while those are still pending. This is
+enforced by Row Level Security policies, not just hidden in the UI, so it
+holds even against direct API calls.
 
 ## Board roster
 
@@ -92,7 +122,9 @@ Run these in the Supabase SQL Editor **in order**, once each:
    adds per-member daily capacity for the Today page's overload flag.
 5. [`supabase/migration-004-archive.sql`](supabase/migration-004-archive.sql) —
    adds `completed_at` and the Archive view.
-6. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
+6. [`supabase/migration-005-board-meetings.sql`](supabase/migration-005-board-meetings.sql) —
+   adds the Board Meetings section, the `is_chair` flag, and its RLS policies.
+7. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
    loads the existing 46-task list and adds Elise and Kate to the roster.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key

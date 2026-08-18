@@ -488,3 +488,161 @@ button:disabled { opacity: 0.6; cursor: default; }
   flex-direction: column;
   gap: 6px;
 }
+
+/* ---- Section nav ---- */
+
+.sections {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.section-btn {
+  background: var(--subtle-bg);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  font-size: 14px;
+  border-radius: 8px;
+}
+
+.section-btn:hover { background: #f0f0f3; color: var(--text); }
+
+.section-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.section-btn.active:hover { background: var(--accent-hover); }
+
+/* ---- Board meetings ---- */
+
+.meeting-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.meeting-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  flex: 1;
+}
+
+.meeting-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+
+.meeting-date { font-size: 17px; font-weight: 600; }
+
+.meeting-nav .icon-btn {
+  font-size: 22px;
+  line-height: 1;
+  padding: 4px 12px;
+  border-radius: 8px;
+}
+
+.meeting-summary {
+  font-size: 13px;
+  color: var(--muted);
+  background: var(--subtle-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 18px;
+}
+
+.meeting-summary strong { color: var(--text); font-size: 15px; }
+
+/* Past 90 minutes the meeting is probably too long to hold attention. */
+.meeting-summary.long {
+  border-color: rgba(215, 0, 21, 0.35);
+  background: rgba(215, 0, 21, 0.04);
+}
+
+.meeting-summary.long strong { color: var(--danger); }
+
+.agenda-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agenda-list.ordered { counter-reset: agenda; }
+
+.agenda-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.agenda-list.ordered .agenda-item { counter-increment: agenda; }
+
+.agenda-list.ordered .agenda-item::before {
+  content: counter(agenda);
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+.agenda-item.declined { opacity: 0.55; }
+
+.agenda-body { flex: 1; min-width: 0; }
+
+.agenda-badges { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+
+.time-badge { background: #e8f0fe; color: #10529c; }
+.motion-badge { background: #ede4ff; color: #5b21b6; }
+
+.agenda-description {
+  font-size: 13px;
+  color: var(--text);
+  margin-top: 5px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.agenda-meta { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+.agenda-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 190px;
+}
+
+.approve-btn {
+  background: var(--success);
+  color: #fff;
+  padding: 5px 12px;
+  font-size: 13px;
+}
+
+.approve-btn:hover { background: #15803d; }
