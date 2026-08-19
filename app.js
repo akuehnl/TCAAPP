@@ -526,21 +526,27 @@ async function deleteTask(id) {
 
 // ---- Rendering ----
 
+// Soonest due date first, undated last, then priority as the tiebreaker.
+// Shared so the Today page orders each of its buckets the same way the board
+// does, rather than leaving them in the order the rows happened to load.
+function compareByDueDate(a, b) {
+  if (a.due_date !== b.due_date) {
+    if (!a.due_date) return 1;
+    if (!b.due_date) return -1;
+    return a.due_date < b.due_date ? -1 : 1;
+  }
+
+  const rank = PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
+  if (rank !== 0) return rank;
+
+  return a.inserted_at < b.inserted_at ? -1 : 1;
+}
+
 // Open tasks first, then soonest due date (undated last), then priority.
 function sortTasks(list) {
   return [...list].sort((a, b) => {
     if (a.is_complete !== b.is_complete) return a.is_complete ? 1 : -1;
-
-    if (a.due_date !== b.due_date) {
-      if (!a.due_date) return 1;
-      if (!b.due_date) return -1;
-      return a.due_date < b.due_date ? -1 : 1;
-    }
-
-    const rank = PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority];
-    if (rank !== 0) return rank;
-
-    return a.inserted_at < b.inserted_at ? -1 : 1;
+    return compareByDueDate(a, b);
   });
 }
 
@@ -791,6 +797,12 @@ function renderMemberCard(member, assigned) {
   for (const task of assigned) {
     const bucket = todayBucket(task);
     if (bucket) buckets[bucket].push({ task, bucket });
+  }
+
+  // Rows arrive in insertion order, so each bucket needs sorting to match the
+  // board. Within Overdue this puts the longest-overdue first.
+  for (const list of Object.values(buckets)) {
+    list.sort((a, b) => compareByDueDate(a.task, b.task));
   }
 
   // Undated work has no schedule, so it doesn't count toward today's load.
