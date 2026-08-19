@@ -278,13 +278,6 @@ function renderPersonRow(member) {
   }
   body.appendChild(seen);
 
-  if (member.notes) {
-    const notes = document.createElement("div");
-    notes.className = "person-notes";
-    notes.textContent = member.notes;
-    body.appendChild(notes);
-  }
-
   row.appendChild(body);
 
   if (isAdmin() && member.id !== currentMember?.id) {

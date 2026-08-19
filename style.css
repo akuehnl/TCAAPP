@@ -689,13 +689,6 @@ button:disabled { opacity: 0.6; cursor: default; }
   word-break: break-word;
 }
 
-.person-notes {
-  font-size: 12px;
-  color: var(--muted);
-  margin-top: 5px;
-  font-style: italic;
-}
-
 .chair-badge { background: #ede4ff; color: #5b21b6; }
 .admin-badge { background: #ffe9d6; color: #9a4a00; }
 
