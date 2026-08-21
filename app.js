@@ -292,7 +292,8 @@ window.addEventListener("hashchange", () => {
 // Defined here rather than in a section's own file because app.js loads
 // first and the session lifecycle needs to switch sections.
 
-const SECTIONS = ["tasks", "meetings", "people", "calendar"];
+// Order matches the nav buttons.
+const SECTIONS = ["tasks", "meetings", "calendar", "people"];
 
 function setSection(name) {
   currentSection = name;

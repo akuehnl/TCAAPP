@@ -140,6 +140,7 @@ button:disabled { opacity: 0.6; cursor: default; }
   gap: 4px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
 .tab {
@@ -495,17 +496,21 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 .sections {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 20px;
+  /* Four buttons do not fit on one line on a narrow phone. Wrapping is the
+     guarantee that none of them ends up off-screen at any width. */
+  flex-wrap: wrap;
 }
 
 .section-btn {
   background: var(--subtle-bg);
   color: var(--muted);
   border: 1px solid var(--border);
-  padding: 8px 16px;
-  font-size: 14px;
+  padding: 7px 13px;
+  font-size: 13px;
   border-radius: 8px;
+  white-space: nowrap;
 }
 
 .section-btn:hover { background: #f0f0f3; color: var(--text); }
@@ -1153,4 +1158,14 @@ button:disabled { opacity: 0.6; cursor: default; }
 @media (max-width: 560px) {
   .cal-cell { min-height: 84px; }
   .event-chip { font-size: 9.5px; padding: 1px 4px; }
+}
+
+/* ---- Narrow screens: nav sizing ----
+   These live at the end of the file on purpose. A media query carries no
+   extra specificity, so the same rules placed above .sections/.section-btn
+   would silently lose to them. */
+@media (max-width: 560px) {
+  .sections { gap: 4px; }
+  .section-btn { padding: 5px 8px; font-size: 12px; }
+  .tab { padding: 7px 8px; font-size: 12.5px; }
 }
