@@ -13,6 +13,7 @@ Two sections, switched from the top of the page:
 | **Tasks** | The board's work — who owns what, what's due, what needs starting today |
 | **Board Meetings** | Agenda suggestions and the chair-approved agenda for each Tuesday meeting |
 | **People** | The roster — who's active, who chairs the board, who administers it |
+| **Calendar** | The school year: holidays, breaks, milestones, safety drills, Parent Partnership days and the observation schedule |
 
 ## Task views
 
@@ -130,6 +131,29 @@ suggestions. Everyone else can edit or withdraw their own suggestions while
 those are still pending. This is enforced by Row Level Security policies, not
 just hidden in the UI, so it holds even against direct API calls.
 
+## Calendar
+
+Seeded from the printed 2026-27 school calendar and the Concordis observation
+schedule — 46 events, 37 single-day and 9 spanning a range.
+
+Two views: a **Month** grid that pages with the arrows, and an **Upcoming**
+list grouped by month with past events dimmed rather than hidden, since the
+record of which drills were run is the point of keeping them.
+
+Categories follow the colours on the printed calendar, and deliberately keep
+fire, tornado and lockdown drills apart rather than lumping them into one
+"drill" colour: how many of each has been run is a compliance question.
+
+Multi-day events are stored as a start and end date, so editing Thanksgiving
+Break is one edit rather than five. In the grid they appear on every day they
+cover, which is why Christmas Break shows across the turn of the year.
+
+Any board member can add, edit or delete an event. Clicking an empty day
+starts an event on that date; clicking an existing event opens it to edit.
+
+Board meetings and task due dates are **not** mirrored here — each already has
+its own section, and copying them in would mean two places to change one date.
+
 ## Roles
 
 | Role | Column | Who | Can |
@@ -237,8 +261,12 @@ Run these in the Supabase SQL Editor **in order**, once each:
     limits the named attendance roll to board members.
 13. [`supabase/migration-012-last-seen.sql`](supabase/migration-012-last-seen.sql) —
     tracks when each person last used the app.
-14. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
+14. [`supabase/migration-013-calendar.sql`](supabase/migration-013-calendar.sql) —
+    adds the school calendar.
+15. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
     loads the existing 46-task list and adds Elise and Kate to the roster.
+16. [`supabase/seed-002-calendar-events.sql`](supabase/seed-002-calendar-events.sql) —
+    loads the 2026-27 school calendar and observation schedule.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key
 into [`config.js`](config.js), and in **Authentication → URL Configuration**

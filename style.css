@@ -1006,3 +1006,131 @@ button:disabled { opacity: 0.6; cursor: default; }
 }
 
 .person-seen.never { font-style: italic; opacity: 0.75; }
+
+/* ---- School calendar ---- */
+
+.cal-grid {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.cal-row { display: grid; grid-template-columns: repeat(7, 1fr); }
+.cal-row + .cal-row { border-top: 1px solid var(--border); }
+
+.cal-head { background: var(--subtle-bg); }
+
+.cal-head-cell {
+  padding: 7px 4px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+
+.cal-head-cell + .cal-head-cell,
+.cal-cell + .cal-cell { border-left: 1px solid var(--border); }
+
+.cal-cell {
+  min-height: 92px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+}
+
+.cal-cell:hover { background: var(--subtle-bg); }
+.cal-cell.outside { background: #fbfbfd; }
+.cal-cell.outside .cal-daynum { opacity: 0.35; }
+
+.cal-cell.today { background: rgba(0, 113, 227, 0.06); }
+.cal-cell.today .cal-daynum {
+  background: var(--accent);
+  color: #fff;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cal-daynum {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.event-chip {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-chip:hover { filter: brightness(0.94); }
+
+/* Category colours, following the printed calendar. The three drill types
+   stay distinct: how many of each has been run is a compliance question. */
+.cat-holiday        { background: #f5e2b8; color: #6b4c00; }
+.cat-break          { background: #1d2d5c; color: #ffffff; }
+.cat-milestone      { background: #d6e4ff; color: #123a7a; }
+.cat-fire-drill     { background: #ffd9d9; color: #9c1010; }
+.cat-tornado-drill  { background: #cfe4fb; color: #10529c; }
+.cat-lockdown-drill { background: #ffe0c2; color: #8a4b00; }
+.cat-partnership    { background: #1f5136; color: #ffffff; }
+.cat-observation    { background: #e8ddff; color: #4a2b8f; }
+.cat-other          { background: #ececf0; color: #4a4a4f; }
+
+.cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.legend-item { display: inline-flex; align-items: center; gap: 6px; }
+
+.legend-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* ---- Calendar list ---- */
+
+.cal-list-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 6px;
+}
+
+.cal-list-row .legend-dot { margin-top: 5px; width: 13px; height: 13px; }
+.cal-list-row.past { opacity: 0.5; }
+.cal-list-body { flex: 1; min-width: 0; }
+.cal-list-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+@media (max-width: 560px) {
+  .cal-cell { min-height: 62px; }
+  .event-chip { font-size: 9px; padding: 1px 3px; }
+}

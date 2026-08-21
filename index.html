@@ -54,6 +54,7 @@
       <button type="button" class="section-btn active" id="section-tasks">Tasks</button>
       <button type="button" class="section-btn" id="section-meetings">Board Meetings</button>
       <button type="button" class="section-btn" id="section-people">People</button>
+      <button type="button" class="section-btn" id="section-calendar">Calendar</button>
     </nav>
 
     <div id="tasks-section">
@@ -300,6 +301,96 @@
       <div id="people-list"></div>
       <p class="message" id="people-message"></p>
     </div><!-- /#people-section -->
+
+    <!-- ================= School calendar ================= -->
+    <div id="calendar-section" class="hidden">
+
+      <div class="meeting-nav">
+        <button type="button" class="icon-btn" id="cal-prev" title="Previous month">&lsaquo;</button>
+        <div class="meeting-heading">
+          <span class="meeting-label">School calendar</span>
+          <span class="meeting-date" id="cal-month"></span>
+        </div>
+        <button type="button" class="icon-btn" id="cal-next" title="Next month">&rsaquo;</button>
+      </div>
+
+      <div class="tabs" role="tablist">
+        <button type="button" class="tab active" id="tab-cal-grid" role="tab">Month</button>
+        <button type="button" class="tab" id="tab-cal-list" role="tab">Upcoming</button>
+      </div>
+
+      <div class="toolbar">
+        <button type="button" id="new-event-btn">+ New event</button>
+        <button type="button" id="cal-today-btn" class="secondary">Jump to today</button>
+      </div>
+
+      <form id="event-form" class="task-form hidden">
+        <h2 id="event-form-heading">New event</h2>
+
+        <div class="field full">
+          <label for="e-title">Event</label>
+          <input type="text" id="e-title" required maxlength="200" />
+        </div>
+
+        <div class="field">
+          <label for="e-category">Category</label>
+          <select id="e-category">
+            <option value="holiday">Holiday</option>
+            <option value="break">Break &mdash; no school</option>
+            <option value="milestone">School milestone</option>
+            <option value="fire-drill">Fire drill</option>
+            <option value="tornado-drill">Tornado drill</option>
+            <option value="lockdown-drill">Lockdown drill</option>
+            <option value="partnership">Parent Partnership</option>
+            <option value="observation">Observation</option>
+            <option value="other" selected>Other</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="e-start">Date</label>
+          <input type="date" id="e-start" required />
+        </div>
+
+        <div class="field">
+          <label for="e-end">End date <span class="optional">multi-day only</span></label>
+          <input type="date" id="e-end" />
+        </div>
+
+        <div class="field">
+          <label for="e-start-time">Start time <span class="optional">optional</span></label>
+          <input type="time" id="e-start-time" />
+        </div>
+
+        <div class="field">
+          <label for="e-end-time">End time <span class="optional">optional</span></label>
+          <input type="time" id="e-end-time" />
+        </div>
+
+        <div class="field full">
+          <label for="e-description">Notes <span class="optional">optional</span></label>
+          <textarea id="e-description" rows="2"></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" id="e-save">Add event</button>
+          <button type="button" id="e-cancel" class="secondary">Cancel</button>
+          <button type="button" id="e-delete" class="icon-btn delete-btn hidden">Delete</button>
+          <span id="event-message" class="message"></span>
+        </div>
+      </form>
+
+      <div id="cal-grid-view">
+        <div id="cal-grid" class="cal-grid"></div>
+        <div id="cal-legend" class="cal-legend"></div>
+      </div>
+
+      <div id="cal-list-view" class="hidden">
+        <div id="cal-list"></div>
+        <p id="cal-list-empty" class="message hidden"></p>
+      </div>
+
+    </div><!-- /#calendar-section -->
   </section>
 
   <p id="loading" class="message">Loading…</p>
@@ -312,5 +403,6 @@
 <script src="meetings.js"></script>
 <script src="minutes.js"></script>
 <script src="people.js"></script>
+<script src="calendar.js"></script>
 </body>
 </html>

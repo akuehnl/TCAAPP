@@ -228,6 +228,7 @@ function scheduleNote(task, bucket) {
 
 const TASK_VIEWS = ["today", "all", "mine", "archive"];
 const MEETING_VIEWS = ["suggestions", "agenda", "completed"];
+const CALENDAR_VIEWS = ["grid", "list"];
 
 // Anything unrecognised — an old link, a hand-typed hash — comes back null so
 // the caller falls back to the defaults rather than half-applying a route.
@@ -242,6 +243,11 @@ function parseRoute() {
   if (route.section === "meetings") {
     if (MEETING_VIEWS.includes(parts[1])) route.view = parts[1];
     if (/^\d{4}-\d{2}-\d{2}$/.test(parts[2] ?? "")) route.date = parts[2];
+  }
+  if (route.section === "calendar") {
+    if (CALENDAR_VIEWS.includes(parts[1])) route.view = parts[1];
+    // Month only, so a link lands on the right page of the grid.
+    if (/^\d{4}-\d{2}$/.test(parts[2] ?? "")) route.month = parts[2];
   }
   return route;
 }
@@ -259,6 +265,11 @@ function syncRoute() {
     // would send you somewhere else on the way back in.
     if (meetingSubView !== "completed" && meetingDate) parts.push(meetingDate);
   }
+  if (currentSection === "calendar") {
+    parts.push(calView);
+    // The list runs across the whole year, so a month would mean nothing.
+    if (calView === "grid" && calMonth) parts.push(calMonth);
+  }
 
   const hash = "#/" + parts.join("/");
   if (location.hash !== hash) history.replaceState(null, "", hash);
@@ -272,6 +283,7 @@ window.addEventListener("hashchange", () => {
 
   if (route.section === "tasks" && route.view) setView(route.view);
   if (route.section === "meetings") applyMeetingRoute(route);
+  if (route.section === "calendar") applyCalendarRoute(route);
   setSection(route.section);
 });
 
@@ -280,7 +292,7 @@ window.addEventListener("hashchange", () => {
 // Defined here rather than in a section's own file because app.js loads
 // first and the session lifecycle needs to switch sections.
 
-const SECTIONS = ["tasks", "meetings", "people"];
+const SECTIONS = ["tasks", "meetings", "people", "calendar"];
 
 function setSection(name) {
   currentSection = name;
@@ -290,6 +302,7 @@ function setSection(name) {
   }
   if (name === "meetings") renderMeetings();
   if (name === "people") renderPeople();
+  if (name === "calendar") renderCalendar();
   syncRoute();
 }
 
@@ -974,6 +987,11 @@ async function enterApp(session) {
 
   // Board meetings live in meetings.js, loaded after this file.
   await applyMeetingRoute(route);
+
+  applyCalendarRoute(route);
+  await loadCalendar();
+  subscribeToCalendar();
+
   setSection(route?.section ?? "tasks");
   subscribeToAgenda();
 }
@@ -1012,6 +1030,7 @@ function exitApp() {
   taskList.innerHTML = "";
   closeForm();
   resetMeetings();
+  resetCalendar();
   authForm.reset();
   setMessage(authMessage, "");
   showScreen(authScreen);
