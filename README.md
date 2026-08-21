@@ -151,6 +151,11 @@ cover, which is why Christmas Break shows across the turn of the year.
 Any board member can add, edit or delete an event. Clicking an empty day
 starts an event on that date; clicking an existing event opens it to edit.
 
+Event titles wrap to two lines inside a day cell, and every event carries its
+full title as a hover tooltip for anything still clipped. On a narrow screen
+the grid scrolls sideways inside its own container rather than the page doing
+it — though the Upcoming list is the better view on a phone.
+
 Board meetings and task due dates are **not** mirrored here — each already has
 its own section, and copying them in would mean two places to change one date.
 
