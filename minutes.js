@@ -542,6 +542,10 @@ function buildMinutesBlock(item, readOnly) {
   if (!readOnly) {
     const form = document.createElement("form");
     form.className = "note-form";
+    // Adding a note re-renders the agenda, which throws this form away and
+    // builds a new one. The id lets us find the replacement and put the
+    // cursor back in it.
+    form.dataset.noteForm = item.id;
 
     const textarea = document.createElement("textarea");
     textarea.rows = 2;
@@ -569,9 +573,17 @@ function buildMinutesBlock(item, readOnly) {
       e.preventDefault();
       const body = textarea.value.trim();
       if (!body) return;
+
+      const itemId = item.id;
       submit.disabled = true;
-      await addNote(item.id, body);
-      submit.disabled = false;
+      await addNote(itemId, body);
+
+      // By now this form is detached and a fresh one has taken its place, so
+      // focus that rather than the element we were holding. It comes back
+      // empty, so the cursor lands ready for the next note.
+      const replacement = document.querySelector(`[data-note-form="${itemId}"] textarea`);
+      if (replacement) replacement.focus();
+      else submit.disabled = false;
     });
 
     block.appendChild(form);
