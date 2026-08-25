@@ -113,6 +113,12 @@ During the meeting, each approved item carries its own minutes block:
   row with its own author, not a shared document. There is no draft or submit
   step — a note is part of the record the moment it is added, which is also
   why nothing can be lost by forgetting to publish it.
+
+  **Ctrl+Enter** (Cmd+Enter on a Mac) adds a note without reaching for the
+  button. Plain Enter still inserts a newline, since notes are often more than
+  one line. Until you submit, what you have typed is local to your browser —
+  nobody else sees it, and it is not saved anywhere, so add notes as you go
+  rather than composing a long one.
 - **Motions** — recorded against *any* item, whether or not it was flagged as
   a motion when suggested, because motions arise mid-discussion. Each records
   the wording, who moved and seconded it, and the chair's declared outcome

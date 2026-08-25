@@ -546,11 +546,23 @@ function buildMinutesBlock(item, readOnly) {
     const textarea = document.createElement("textarea");
     textarea.rows = 2;
     textarea.required = true;
-    textarea.placeholder = "Record a discussion point…";
+    textarea.placeholder = "Record a discussion point…  (Ctrl+Enter to add)";
 
     const submit = document.createElement("button");
     submit.type = "submit";
     submit.textContent = "Add note";
+    submit.title = "Ctrl+Enter";
+
+    // Plain Enter has to keep inserting newlines — a note is often more than
+    // one line — so the shortcut is Ctrl+Enter, or Cmd+Enter on a Mac.
+    // requestSubmit() rather than dispatching a submit event, so the
+    // textarea's own required-field validation still runs.
+    textarea.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        form.requestSubmit();
+      }
+    });
 
     form.append(textarea, submit);
     form.addEventListener("submit", async (e) => {
