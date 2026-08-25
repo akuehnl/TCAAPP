@@ -14,6 +14,7 @@ const EVENT_CATEGORIES = [
   ["lockdown-drill", "Lockdown drill"],
   ["partnership", "Parent Partnership"],
   ["observation", "Observation"],
+  ["personnel", "Personnel"],
   ["other", "Other"],
 ];
 
@@ -29,7 +30,7 @@ const tabCalList = $("tab-cal-list");
 const calGridView = $("cal-grid-view");
 const calListView = $("cal-list-view");
 const calGrid = $("cal-grid");
-const calLegend = $("cal-legend");
+const calFilters = $("cal-filters");
 const calList = $("cal-list");
 const calListEmpty = $("cal-list-empty");
 
@@ -51,6 +52,10 @@ const eDelete = $("e-delete");
 let calendarEvents = [];
 let calMonth = null;          // "YYYY-MM"
 let calView = "grid";         // "grid" | "list"
+// Categories switched off for this session. Deliberately not persisted: the
+// app should open showing everything, so a category hidden weeks ago can
+// never quietly keep hiding events you have forgotten about.
+let hiddenCategories = new Set();
 let editingEventId = null;
 let calendarChannel = null;
 
@@ -91,10 +96,63 @@ function formatTimes(event) {
   return event.end_time ? `${trim(event.start_time)}–${trim(event.end_time)}` : trim(event.start_time);
 }
 
+function visibleEvents() {
+  return calendarEvents.filter((e) => !hiddenCategories.has(e.category));
+}
+
 // A multi-day event is "on" every date it covers, so it shows up wherever you
 // happen to be looking in the grid rather than only on its first day.
 function eventsOnDate(iso) {
-  return calendarEvents.filter((e) => iso >= e.starts_on && iso <= (e.ends_on || e.starts_on));
+  return visibleEvents().filter((e) => iso >= e.starts_on && iso <= (e.ends_on || e.starts_on));
+}
+
+function toggleCategory(category) {
+  if (hiddenCategories.has(category)) hiddenCategories.delete(category);
+  else hiddenCategories.add(category);
+  renderCalendar();
+}
+
+// Only categories that actually have events get a control, so the row does not
+// list eight filters for a calendar using three.
+function renderCalFilters() {
+  const used = EVENT_CATEGORIES.filter(([value]) =>
+    calendarEvents.some((e) => e.category === value));
+
+  calFilters.innerHTML = "";
+  if (used.length < 2) return;   // nothing to filter between
+
+  for (const [value, label] of used) {
+    const on = !hiddenCategories.has(value);
+    const count = calendarEvents.filter((e) => e.category === value).length;
+
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "filter-chip" + (on ? " on" : "");
+    chip.setAttribute("aria-pressed", String(on));
+    chip.title = on ? `Hide ${label}` : `Show ${label}`;
+
+    const dot = document.createElement("span");
+    dot.className = "legend-dot cat-" + value;
+
+    const text = document.createElement("span");
+    text.textContent = `${label} (${count})`;
+
+    chip.append(dot, text);
+    chip.addEventListener("click", () => toggleCategory(value));
+    calFilters.appendChild(chip);
+  }
+
+  if (hiddenCategories.size) {
+    const reset = document.createElement("button");
+    reset.type = "button";
+    reset.className = "filter-reset";
+    reset.textContent = `Show all (${hiddenCategories.size} hidden)`;
+    reset.addEventListener("click", () => {
+      hiddenCategories.clear();
+      renderCalendar();
+    });
+    calFilters.appendChild(reset);
+  }
 }
 
 // Restores the month and view the URL asks for, before the first render.
@@ -325,36 +383,24 @@ function renderCalGrid() {
     calGrid.appendChild(row);
     if (toIsoDate(cursor).slice(0, 7) !== calMonth) break;
   }
-
-  // Legend, limited to the categories actually in view.
-  calLegend.innerHTML = "";
-  const present = new Set(
-    calendarEvents
-      .filter((e) => e.starts_on.slice(0, 7) <= calMonth && (e.ends_on || e.starts_on).slice(0, 7) >= calMonth)
-      .map((e) => e.category)
-  );
-  for (const [value, label] of EVENT_CATEGORIES) {
-    if (!present.has(value)) continue;
-    const item = document.createElement("span");
-    item.className = "legend-item";
-    const dot = document.createElement("span");
-    dot.className = "legend-dot cat-" + value;
-    const text = document.createElement("span");
-    text.textContent = label;
-    item.append(dot, text);
-    calLegend.appendChild(item);
-  }
 }
 
 function renderCalList() {
+  // The month headings below assume date order. loadCalendar() already sorts,
+  // but grouping silently emits duplicate headings if it ever does not, so
+  // guarantee it here rather than depend on the caller.
+  const shown = visibleEvents().sort((a, b) => a.starts_on.localeCompare(b.starts_on));
+
   calList.innerHTML = "";
-  calListEmpty.classList.toggle("hidden", calendarEvents.length > 0);
-  calListEmpty.textContent = "No events on the calendar yet.";
+  calListEmpty.classList.toggle("hidden", shown.length > 0);
+  calListEmpty.textContent = calendarEvents.length
+    ? "Every category is hidden — turn one back on above."
+    : "No events on the calendar yet.";
 
   const todayIso = toIsoDate(todayAtMidnight());
   let lastMonth = null;
 
-  for (const event of calendarEvents) {
+  for (const event of shown) {
     const month = event.starts_on.slice(0, 7);
     if (month !== lastMonth) {
       const heading = document.createElement("h3");
@@ -414,10 +460,13 @@ function renderCalList() {
 
 function renderCalendar() {
   if (!calMonth) calMonth = monthKey(new Date());
+
+  const shown = visibleEvents().length;
   calMonthEl.textContent = calView === "grid"
     ? formatMonth(calMonth)
-    : `${calendarEvents.length} events`;
+    : `${shown} of ${calendarEvents.length} events`;
 
+  renderCalFilters();
   if (calView === "grid") renderCalGrid();
   else renderCalList();
 }
@@ -439,7 +488,9 @@ function resetCalendar() {
   }
   calendarEvents = [];
   calMonth = null;
+  hiddenCategories.clear();
   closeEventForm();
   calGrid.innerHTML = "";
   calList.innerHTML = "";
+  calFilters.innerHTML = "";
 }

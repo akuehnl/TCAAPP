@@ -142,7 +142,14 @@ record of which drills were run is the point of keeping them.
 
 Categories follow the colours on the printed calendar, and deliberately keep
 fire, tornado and lockdown drills apart rather than lumping them into one
-"drill" colour: how many of each has been run is a compliance question.
+"drill" colour: how many of each has been run is a compliance question. A
+**personnel** category carries staff and board absences.
+
+Each category has a **toggle** above the calendar, showing its event count and
+acting as the colour key. Toggling filters both the month grid and the list.
+Everything is on when the app opens and the state is not remembered between
+sessions — a category switched off weeks ago should never quietly keep hiding
+events you have forgotten about.
 
 Multi-day events are stored as a start and end date, so editing Thanksgiving
 Break is one edit rather than five. In the grid they appear on every day they
@@ -270,8 +277,12 @@ Run these in the Supabase SQL Editor **in order**, once each:
     adds the school calendar.
 15. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
     loads the existing 46-task list and adds Elise and Kate to the roster.
-16. [`supabase/seed-002-calendar-events.sql`](supabase/seed-002-calendar-events.sql) —
+16. [`supabase/migration-014-personnel-category.sql`](supabase/migration-014-personnel-category.sql) —
+    adds the `personnel` calendar category.
+17. [`supabase/seed-002-calendar-events.sql`](supabase/seed-002-calendar-events.sql) —
     loads the 2026-27 school calendar and observation schedule.
+18. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
+    loads the recorded staff absences.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key
 into [`config.js`](config.js), and in **Authentication → URL Configuration**

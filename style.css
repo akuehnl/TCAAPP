@@ -1109,16 +1109,53 @@ button:disabled { opacity: 0.6; cursor: default; }
 .cat-lockdown-drill { background: #ffe0c2; color: #8a4b00; }
 .cat-partnership    { background: #1f5136; color: #ffffff; }
 .cat-observation    { background: #e8ddff; color: #4a2b8f; }
+.cat-personnel      { background: #d9f0ee; color: #0f5f59; }
 .cat-other          { background: #ececf0; color: #4a4a4f; }
 
-.cal-legend {
+.cal-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 16px;
-  margin-top: 12px;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+/* Doubles as the colour key: the dot is the category's calendar colour, so
+   there is no separate legend to keep in step with it. */
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
   font-size: 12px;
+  font-weight: 500;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
   color: var(--muted);
 }
+
+.filter-chip:hover { background: var(--subtle-bg); color: var(--text); }
+
+.filter-chip.on {
+  background: var(--subtle-bg);
+  border-color: var(--muted);
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Off reads as switched off rather than merely unselected. */
+.filter-chip:not(.on) { opacity: 0.55; }
+.filter-chip:not(.on) .legend-dot { filter: grayscale(1); }
+
+.filter-reset {
+  background: none;
+  color: var(--accent);
+  padding: 5px 8px;
+  font-size: 12px;
+  text-decoration: underline;
+}
+
+.filter-reset:hover { background: none; }
 
 .legend-item { display: inline-flex; align-items: center; gap: 6px; }
 
