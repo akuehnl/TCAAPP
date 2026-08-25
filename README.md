@@ -78,13 +78,41 @@ the voting members are present. That is deliberately a count rather than a
 quorum verdict: quorum rules are the board's to define, not the app's to
 assume.
 
+### The meeting clock
+
+Any member presses **Start meeting** when it actually begins. The agenda's
+`est_minutes` are then laid out as real wall-clock windows from that moment,
+each approved item showing its planned slot, and a strip at the top reads:
+
+> **Clock says: 3. Security cameras · 2:19–2:44 PM · 22 min left**
+> Actually on 2. Enrollment update — 1 item behind.
+
+So it distinguishes where the *clock* says you should be from where you
+*actually* are, the second derived from which items are marked discussed. Past
+the planned finish it says how far over. The strip refreshes every 20 seconds
+while a started agenda is on screen.
+
+Anchored to an actual start rather than a nominal hour on purpose: meetings
+rarely begin on time, and a schedule pinned to "7:00 PM" would report you
+twelve minutes behind before anyone had spoken. Starting is open to any member
+— the secretary is often driving the app. Resetting the clock is chair or
+admin only, and a second press of Start cannot restart a running clock.
+
 ### Minutes
 
 During the meeting, each approved item carries its own minutes block:
 
-- **Notes** — any number of discussion points, each stamped with who wrote it
-  and when. Authors can correct their own; the chair or an admin can correct
+- **Notes** — any number of discussion points, **grouped by who wrote them**
+  so several people can take notes at once without the record reading as one
+  muddled transcript. Each person's notes stay in time order within their own
+  group, and groups follow roster order so the layout is stable meeting to
+  meeting. Authors can correct their own; the chair or an admin can correct
   anyone's.
+
+  Concurrent note-takers cannot overwrite each other: every note is its own
+  row with its own author, not a shared document. There is no draft or submit
+  step — a note is part of the record the moment it is added, which is also
+  why nothing can be lost by forgetting to publish it.
 - **Motions** — recorded against *any* item, whether or not it was flagged as
   a motion when suggested, because motions arise mid-discussion. Each records
   the wording, who moved and seconded it, and the chair's declared outcome
@@ -281,7 +309,9 @@ Run these in the Supabase SQL Editor **in order**, once each:
     adds the `personnel` calendar category.
 17. [`supabase/seed-002-calendar-events.sql`](supabase/seed-002-calendar-events.sql) —
     loads the 2026-27 school calendar and observation schedule.
-18. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
+18. [`supabase/migration-015-meeting-clock.sql`](supabase/migration-015-meeting-clock.sql) —
+    adds the meeting clock.
+19. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
     loads the recorded staff absences.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key

@@ -17,6 +17,8 @@ const completedView = $("completed-view");
 const completedList = $("completed-list");
 const completedEmpty = $("completed-empty");
 const completeMeetingBtn = $("complete-meeting-btn");
+const startMeetingBtn = $("start-meeting-btn");
+const meetingClock = $("meeting-clock");
 const meetingToolbar = $("meeting-toolbar");
 const suggestionsView = $("suggestions-view");
 const agendaViewEl = $("agenda-view");
@@ -47,6 +49,7 @@ let expandedMeetings = new Set();
 let archiveCache = new Map();       // meeting_date -> compiled minutes
 let editingAgendaId = null;
 let agendaChannel = null;
+let clockTimer = null;
 
 // Admins carry every chair power, so the two are checked together
 // everywhere the agenda is managed.
@@ -382,7 +385,12 @@ function renderAgendaRow(item, { approved }) {
 
   const meta = document.createElement("div");
   meta.className = "agenda-meta";
-  meta.textContent = "Suggested by " + submitterName(item);
+  const bits = ["Suggested by " + submitterName(item)];
+  if (approved && clockStart()) {
+    const slot = plannedSchedule().find((sl) => sl.item.id === item.id);
+    if (slot) bits.unshift(`${formatClock(slot.from)}–${formatClock(slot.to)}`);
+  }
+  meta.textContent = bits.join("  ·  ");
   body.appendChild(meta);
 
   const actions = document.createElement("div");
@@ -703,6 +711,157 @@ function renderCompletedMeetings() {
   }
 }
 
+// ---- Meeting clock ----
+//
+// Lays the agenda's est_minutes out as real wall-clock windows starting from
+// when the meeting actually began, so the strip can say which item the clock
+// thinks you should be on — and how that compares with where you actually are.
+
+function clockStart() {
+  return meetingRecord?.started_at ? new Date(meetingRecord.started_at) : null;
+}
+
+function formatClock(date) {
+  return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+function formatDelta(mins) {
+  const n = Math.abs(Math.round(mins));
+  if (n < 1) return "on time";
+  return `${n} min ${mins > 0 ? "over" : "left"}`;
+}
+
+// Planned window for each approved item: cumulative est_minutes from the
+// start. Returns [{ item, from, to }] in agenda order.
+function plannedSchedule() {
+  const start = clockStart();
+  if (!start) return [];
+
+  let cursor = start.getTime();
+  return approvedItems().map((item) => {
+    const from = new Date(cursor);
+    cursor += (Number(item.est_minutes) || 0) * 60000;
+    return { item, from, to: new Date(cursor) };
+  });
+}
+
+function renderMeetingClock() {
+  const start = clockStart();
+  const schedule = plannedSchedule();
+
+  // Only meaningful on a live agenda that has been started and has items.
+  const show = start && schedule.length && !isMeetingComplete() && meetingSubView === "agenda";
+  meetingClock.classList.toggle("hidden", !show);
+  if (!show) return;
+
+  const now = Date.now();
+  const elapsed = (now - start.getTime()) / 60000;
+
+  // Where the clock says we should be.
+  let planned = schedule.find((s) => now >= s.from.getTime() && now < s.to.getTime());
+  const overran = !planned && now >= schedule[schedule.length - 1].to.getTime();
+  if (overran) planned = schedule[schedule.length - 1];
+
+  // Where we actually are: the first item not yet marked discussed.
+  const actualIndex = schedule.findIndex((s) => !s.item.completed_at);
+  const actual = actualIndex === -1 ? null : schedule[actualIndex];
+  const plannedIndex = schedule.indexOf(planned);
+
+  meetingClock.innerHTML = "";
+
+  const head = document.createElement("div");
+  head.className = "clock-head";
+
+  const label = document.createElement("span");
+  label.className = "clock-label";
+  label.textContent = `Started ${formatClock(start)}`;
+
+  const total = schedule[schedule.length - 1].to;
+  const finish = document.createElement("span");
+  finish.className = "clock-finish";
+  finish.textContent = `Planned finish ${formatClock(total)}`;
+
+  head.append(label, finish);
+  meetingClock.appendChild(head);
+
+  // The headline: which item the clock is on.
+  const nowLine = document.createElement("div");
+  nowLine.className = "clock-now";
+  if (overran) {
+    nowLine.classList.add("over");
+    nowLine.textContent =
+      `Past the planned finish by ${Math.round((now - total.getTime()) / 60000)} min`;
+  } else {
+    const remaining = (planned.to.getTime() - now) / 60000;
+    if (remaining < 0) nowLine.classList.add("over");
+    nowLine.textContent =
+      `Clock says: ${plannedIndex + 1}. ${planned.item.title}  ·  ` +
+      `${formatClock(planned.from)}–${formatClock(planned.to)}  ·  ${formatDelta(-remaining)}`;
+  }
+  meetingClock.appendChild(nowLine);
+
+  // Where the board actually is, when that differs.
+  const actualLine = document.createElement("div");
+  actualLine.className = "clock-actual";
+  if (!actual) {
+    actualLine.textContent = "Every item marked discussed.";
+  } else if (actualIndex === plannedIndex && !overran) {
+    actualLine.textContent = `On item ${actualIndex + 1} — on schedule.`;
+  } else {
+    const diff = plannedIndex - actualIndex;
+    const word = diff > 0 ? "behind" : "ahead";
+    actualLine.classList.add(diff > 0 ? "behind" : "ahead");
+    actualLine.textContent =
+      `Actually on ${actualIndex + 1}. ${actual.item.title} — ` +
+      `${Math.abs(diff)} item${Math.abs(diff) === 1 ? "" : "s"} ${word}.`;
+  }
+  meetingClock.appendChild(actualLine);
+
+  const elapsedLine = document.createElement("div");
+  elapsedLine.className = "clock-elapsed";
+  elapsedLine.textContent = `${Math.round(elapsed)} min elapsed`;
+  meetingClock.appendChild(elapsedLine);
+}
+
+// Re-render on a timer so the strip stays honest without anyone reloading.
+// Only runs while a started meeting's agenda is on screen.
+function syncClockTimer() {
+  const wanted = clockStart() && !isMeetingComplete()
+    && currentSection === "meetings" && meetingSubView === "agenda";
+
+  if (wanted && !clockTimer) {
+    clockTimer = setInterval(renderMeetingClock, 20000);
+  } else if (!wanted && clockTimer) {
+    clearInterval(clockTimer);
+    clockTimer = null;
+  }
+}
+
+async function startMeeting() {
+  if (!confirm("Start the meeting clock now? The agenda times will run from this moment.")) return;
+  const { error } = await supabaseClient.rpc("start_meeting", { p_meeting_date: meetingDate });
+  if (error) {
+    alert(error.message);
+    return;
+  }
+  await loadAgenda();
+}
+
+async function resetMeetingClock() {
+  if (!confirm("Reset the meeting clock? The schedule will be unset until it is started again.")) return;
+  const { error } = await supabaseClient.rpc("clear_meeting_start", { p_meeting_date: meetingDate });
+  if (error) {
+    alert(error.message);
+    return;
+  }
+  await loadAgenda();
+}
+
+startMeetingBtn.addEventListener("click", () => {
+  if (clockStart()) resetMeetingClock();
+  else startMeeting();
+});
+
 function renderSummary() {
   const approved = approvedItems();
   const total = approved.reduce((sum, i) => sum + (i.est_minutes || 0), 0);
@@ -759,6 +918,14 @@ function renderMeetings() {
     : "+ Suggest an item";
 
   const complete = isMeetingComplete();
+  const started = Boolean(clockStart());
+
+  // Reset is chair-only; starting is open to any member.
+  startMeetingBtn.classList.toggle(
+    "hidden", complete || !approved.length || meetingSubView !== "agenda" || (started && !isChair())
+  );
+  startMeetingBtn.textContent = started ? "Reset clock" : "Start meeting";
+
   newAgendaBtn.classList.toggle("hidden", complete);
   // Once complete this is the Reopen button, so it has to stay visible even
   // if every item was carried forward and none are left on this date.
@@ -783,6 +950,9 @@ function renderMeetings() {
     agendaList.appendChild(renderAgendaRow(item, { approved: true }));
   }
   agendaEmpty.classList.toggle("hidden", approved.length > 0);
+
+  renderMeetingClock();
+  syncClockTimer();
   agendaEmpty.textContent = isChair()
     ? "Nothing approved yet. Approve suggestions, or add an item straight to the agenda."
     : "The chair hasn't approved any items for this meeting yet.";
@@ -803,6 +973,10 @@ function resetMeetings() {
   if (agendaChannel) {
     supabaseClient.removeChannel(agendaChannel);
     agendaChannel = null;
+  }
+  if (clockTimer) {
+    clearInterval(clockTimer);
+    clockTimer = null;
   }
   agendaItems = [];
   meetingDate = null;

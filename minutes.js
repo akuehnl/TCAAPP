@@ -199,6 +199,23 @@ async function toggleItemComplete(itemId, complete) {
 
 // ---- Rendering ----
 
+// Authors ordered by roster position so the grouping is stable meeting to
+// meeting, with anyone off the roster last.
+function notesByAuthor(notes) {
+  const groups = new Map();
+  for (const note of notes) {
+    const key = note.author_id ?? "unknown";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(note);
+  }
+
+  const rank = (id) => {
+    const member = membersById.get(id);
+    return member ? (member.sort_order ?? 999) : 1000;
+  };
+  return [...groups.entries()].sort((a, b) => rank(a[0]) - rank(b[0]));
+}
+
 function subHeading(text) {
   const h = document.createElement("h4");
   h.className = "minutes-heading";
@@ -216,7 +233,8 @@ function renderNote(note, readOnly) {
 
   const meta = document.createElement("div");
   meta.className = "minute-meta";
-  meta.textContent = `${memberName(note.author_id)} · ${formatStamp(note.inserted_at)}`;
+  // The author is the group heading now, so the note itself only needs when.
+  meta.textContent = formatStamp(note.inserted_at);
 
   const wrap = document.createElement("div");
   wrap.className = "minute-main";
@@ -498,10 +516,22 @@ function buildMinutesBlock(item, readOnly) {
   block.appendChild(subHeading(`Minutes${notes.length ? ` (${notes.length})` : ""}`));
 
   if (notes.length) {
-    const ul = document.createElement("ul");
-    ul.className = "minute-list";
-    for (const note of notes) ul.appendChild(renderNote(note, readOnly));
-    block.appendChild(ul);
+    // Grouped by who wrote them rather than interleaved by time: with several
+    // people taking notes at once, a strict chronological list reads as one
+    // muddled transcript. Each person's notes stay in time order within their
+    // own group. Nothing is private — these are separate rows per author, so
+    // simultaneous writers never overwrite each other.
+    for (const [authorId, group] of notesByAuthor(notes)) {
+      const who = document.createElement("div");
+      who.className = "note-author";
+      who.textContent = memberName(authorId);
+      block.appendChild(who);
+
+      const ul = document.createElement("ul");
+      ul.className = "minute-list";
+      for (const note of group) ul.appendChild(renderNote(note, readOnly));
+      block.appendChild(ul);
+    }
   } else if (readOnly) {
     const none = document.createElement("p");
     none.className = "minute-none";

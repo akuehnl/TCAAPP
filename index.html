@@ -188,6 +188,7 @@
 
       <div class="toolbar" id="meeting-toolbar">
         <button type="button" id="new-agenda-btn">+ Suggest an item</button>
+        <button type="button" id="start-meeting-btn" class="secondary hidden">Start meeting</button>
         <button type="button" id="complete-meeting-btn" class="secondary hidden">Mark meeting complete</button>
       </div>
 
@@ -235,6 +236,7 @@
       </div>
 
       <div id="agenda-view" class="hidden">
+        <div id="meeting-clock" class="meeting-clock hidden"></div>
         <div id="attendance-host"></div>
         <ol id="agenda-list" class="agenda-list ordered"></ol>
         <p id="agenda-empty" class="message hidden"></p>
