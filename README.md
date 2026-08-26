@@ -132,9 +132,9 @@ During the meeting, each approved item carries its own minutes block:
   A half-typed note is **held per agenda item and restored** whenever the box
   is rebuilt — which happens every time anyone adds a note, records a motion or
   casts a vote. It is also mirrored to browser storage, so it survives a reload
-  or the browser discarding a backgrounded tab. Until you submit, what you have typed is local to your browser —
-  nobody else sees it, and it is not saved anywhere, so add notes as you go
-  rather than composing a long one.
+  or the browser discarding a backgrounded tab. Until you submit it, though, a
+  draft is local to your browser: nobody else can see it, and it does not reach
+  the database, so it is not part of the record until you add it.
 - **Motions** — recorded against *any* item, whether or not it was flagged as
   a motion when suggested, because motions arise mid-discussion. Each records
   the wording, who moved and seconded it, and the chair's declared outcome
