@@ -17,7 +17,7 @@ const OUTCOME_LABEL = {
 };
 
 const VOTE_OPTIONS = [
-  ["yea", "Yea"],
+  ["aye", "Aye"],
   ["nay", "Nay"],
   ["abstain", "Abstain"],
 ];
@@ -96,7 +96,7 @@ function votingMembers() {
 function tallyFor(motionId) {
   const votes = votesByMotion.get(motionId) ?? [];
   return {
-    yea: votes.filter((v) => v.vote === "yea").length,
+    aye: votes.filter((v) => v.vote === "aye").length,
     nay: votes.filter((v) => v.vote === "nay").length,
     abstain: votes.filter((v) => v.vote === "abstain").length,
   };
@@ -299,7 +299,7 @@ function miniButton(label, handler, className) {
   return btn;
 }
 
-// The roll call: every active member gets yea / nay / abstain.
+// The roll call: every active member gets aye / nay / abstain.
 function renderRollCall(motion, readOnly) {
   const wrap = document.createElement("div");
   wrap.className = "roll-call";
@@ -405,7 +405,7 @@ function renderMotion(motion, readOnly) {
 
   const counts = document.createElement("span");
   counts.className = "motion-tally";
-  counts.textContent = `${tally.yea} yea · ${tally.nay} nay · ${tally.abstain} abstain`;
+  counts.textContent = `${tally.aye} aye · ${tally.nay} nay · ${tally.abstain} abstain`;
   result.appendChild(counts);
 
   // The chair declares the result, so the outcome stays a manual choice —
@@ -668,9 +668,14 @@ function buildMinutesBlock(item, readOnly) {
 
 const ATTEND_OPTIONS = [
   ["present", "Present"],
+  ["remote", "Via Zoom"],
   ["absent", "Absent"],
   ["excused", "Excused"],
 ];
+
+// Both count as attending; they are kept apart so the minutes can show who
+// was actually in the room.
+const ATTENDING = ["present", "remote"];
 
 let attendance = [];
 
@@ -746,12 +751,19 @@ function attendanceSummary() {
     (a) => a.guest_name || (a.member_id && membersById.get(a.member_id)?.can_vote !== false)
   );
 
-  const present = counted.filter((a) => a.status === "present");
-  const voting = present.filter((a) => a.member_id);
+  const inPerson = counted.filter((a) => a.status === "present");
+  const remote = counted.filter((a) => a.status === "remote");
+  const attending = counted.filter((a) => ATTENDING.includes(a.status));
+  const voting = attending.filter((a) => a.member_id);
   const eligible = votingMembers().length;
-  const guests = guestRows().filter((a) => a.status === "present").length;
+  const guests = guestRows().filter((a) => ATTENDING.includes(a.status)).length;
 
-  const bits = [`${present.length} present`];
+  // Only split in person from remote when somebody actually is remote —
+  // otherwise "4 in person" is a distinction with nothing on the other side.
+  const bits = remote.length
+    ? [`${inPerson.length} in person`, `${remote.length} via Zoom`]
+    : [`${inPerson.length} present`];
+
   const absent = counted.filter((a) => a.status === "absent").length;
   const excused = counted.filter((a) => a.status === "excused").length;
   if (absent) bits.push(`${absent} absent`);

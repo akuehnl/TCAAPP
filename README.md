@@ -69,12 +69,16 @@ readable.
 ### Attendance
 
 Taken at the top of the agenda, before discussion starts. The named roll is
-the **five voting board members**, each marked **Present**, **Absent** or
-**Excused**. Anyone else who attends — staff, a parent, a vendor — is
+the **five voting board members**, each marked **Present**, **Via Zoom**,
+**Absent** or **Excused**. Attending remotely is kept distinct from being in
+the room — for a board that meets partly on Zoom, who was physically present is
+worth being able to read back off the minutes — but both count as attending, so
+both count toward the voting-members figure. Anyone else who attends — staff, a parent, a vendor — is
 **written in as a guest**, including other app users such as Elise and Kate.
 
-The header counts present, absent, excused and guests, and states how many of
-the voting members are present. That is deliberately a count rather than a
+The header counts attendance and states how many of the voting members are
+present. It only splits "in person" from "via Zoom" when somebody actually is
+remote; otherwise it reads plainly as "4 present". That is deliberately a count rather than a
 quorum verdict: quorum rules are the board's to define, not the app's to
 assume.
 
@@ -144,7 +148,7 @@ During the meeting, each approved item carries its own minutes block:
   a motion when suggested, because motions arise mid-discussion. Each records
   the wording, who moved and seconded it, and the chair's declared outcome
   (carried / failed / tabled / withdrawn).
-- **Roll call** — every active *voting* member is marked **Yea**, **Nay** or
+- **Roll call** — every active *voting* member is marked **Aye**, **Nay** or
   **Abstain**. Staff on the roster (Elise, Kate) do not appear: they are there
   to be assigned tasks and named on agenda items, not to vote. The same
   restriction applies to who can move and second a motion. Tallies are counted from those rows rather than stored, so they
@@ -347,7 +351,9 @@ Run these in the Supabase SQL Editor **in order**, once each:
     adds the Zoom link setting and deferring an agenda item.
 20. [`supabase/migration-017-carry-suggestions.sql`](supabase/migration-017-carry-suggestions.sql) —
     carries unconsidered suggestions to the next meeting.
-21. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
+21. [`supabase/migration-018-aye-and-remote.sql`](supabase/migration-018-aye-and-remote.sql) —
+    renames the aye vote and adds attending via Zoom.
+22. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
     loads the recorded staff absences.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key

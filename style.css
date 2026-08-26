@@ -911,7 +911,7 @@ button:disabled { opacity: 0.6; cursor: default; }
 .vote-option:hover { background: var(--subtle-bg); }
 
 .vote-option.selected { font-weight: 600; }
-.vote-option.vote-yea.selected { background: #dcf5e3; border-color: var(--success); color: #14532d; }
+.vote-option.vote-aye.selected { background: #dcf5e3; border-color: var(--success); color: #14532d; }
 .vote-option.vote-nay.selected { background: #ffe5e5; border-color: var(--danger); color: #a30010; }
 .vote-option.vote-abstain.selected { background: #fff2d9; border-color: #b8860b; color: #8a5a00; }
 
@@ -983,6 +983,7 @@ button:disabled { opacity: 0.6; cursor: default; }
 .attend-option:hover { background: #f0f0f3; }
 .attend-option.selected { font-weight: 600; }
 .attend-option.attend-present.selected { background: #dcf5e3; border-color: var(--success); color: #14532d; }
+.attend-option.attend-remote.selected { background: #ddeaff; border-color: #2d8cff; color: #14407a; }
 .attend-option.attend-absent.selected { background: #ffe5e5; border-color: var(--danger); color: #a30010; }
 .attend-option.attend-excused.selected { background: #fff2d9; border-color: #b8860b; color: #8a5a00; }
 
