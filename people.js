@@ -13,6 +13,10 @@ const peopleList = $("people-list");
 const peopleIntro = $("people-intro");
 const peopleMessage = $("people-message");
 const peopleToolbar = $("people-toolbar");
+const zoomForm = $("zoom-form");
+const zoomUrlInput = $("zoom-url-input");
+const zoomSave = $("zoom-save");
+const zoomMessage = $("zoom-message");
 
 const addPersonBtn = $("add-person-btn");
 const personForm = $("person-form");
@@ -207,6 +211,38 @@ function formatLastSeen(iso) {
   });
 }
 
+// Admin-only, since it is a board-wide setting rather than a preference —
+// enforced by the app_settings update policy as well as hidden here.
+zoomForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const url = zoomUrlInput.value.trim();
+
+  if (url && !/^https?:\/\//i.test(url)) {
+    setMessage(zoomMessage, "The link needs to start with https://", "error");
+    return;
+  }
+
+  zoomSave.disabled = true;
+  setMessage(zoomMessage, "Saving…");
+
+  const { error } = await supabaseClient
+    .from("app_settings")
+    .update({ value: url || null, updated_at: new Date().toISOString(),
+              updated_by: currentMember?.id ?? null })
+    .eq("key", "zoom_url");
+
+  zoomSave.disabled = false;
+
+  if (error) {
+    setMessage(zoomMessage, error.message, "error");
+    return;
+  }
+
+  appSettings.zoom_url = url || null;
+  renderZoomLink();
+  setMessage(zoomMessage, url ? "Saved. The Join Zoom button is live." : "Cleared.", "success");
+});
+
 function roleBadge(text, className) {
   const badge = document.createElement("span");
   badge.className = "badge " + className;
@@ -323,6 +359,12 @@ function renderPeople() {
     : `${active.length} active. ${chair ? chair.name + " chairs the board." : "No board chair is set."}`;
 
   peopleToolbar.classList.toggle("hidden", !isAdmin());
+  zoomForm.classList.toggle("hidden", !isAdmin());
+  // Only refill when it is not being edited, so typing is never overwritten
+  // by a realtime refresh.
+  if (document.activeElement !== zoomUrlInput) {
+    zoomUrlInput.value = appSettings.zoom_url ?? "";
+  }
   if (!isAdmin()) closePersonForm();
 
   peopleList.innerHTML = "";

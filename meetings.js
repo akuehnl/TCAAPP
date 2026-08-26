@@ -362,6 +362,7 @@ function actionButton(label, handler, className) {
 function renderAgendaRow(item, { approved }) {
   const li = document.createElement("li");
   li.className = "agenda-item";
+  li.dataset.item = item.id;
   if (item.status === "declined") li.classList.add("declined");
 
   const body = document.createElement("div");
@@ -433,6 +434,9 @@ function renderAgendaRow(item, { approved }) {
     // written up, not before. Open to any member, like the rest of minute
     // taking.
     if (!isMeetingComplete()) {
+      const actionRow = document.createElement("div");
+      actionRow.className = "item-actions";
+
       const done = document.createElement("button");
       done.type = "button";
       done.className = "discuss-btn" + (item.completed_at ? " done" : "");
@@ -440,7 +444,23 @@ function renderAgendaRow(item, { approved }) {
         ? "\u2713 Discussed \u2014 click to reopen"
         : "Mark as discussed";
       done.addEventListener("click", () => toggleItemComplete(item.id, !item.completed_at));
-      body.appendChild(done);
+      actionRow.appendChild(done);
+
+      // Only worth offering while the item is still to be discussed, and only
+      // when there is somewhere below it to move to.
+      const approvedList = approvedItems();
+      const isLast = approvedList[approvedList.length - 1]?.id === item.id;
+      if (!item.completed_at && approvedList.length > 1 && !isLast) {
+        const skip = document.createElement("button");
+        skip.type = "button";
+        skip.className = "skip-btn";
+        skip.textContent = "Skip for now";
+        skip.title = "Move to the end of the agenda and carry on";
+        skip.addEventListener("click", () => deferItem(item.id));
+        actionRow.appendChild(skip);
+      }
+
+      body.appendChild(actionRow);
     }
   }
 
@@ -480,6 +500,18 @@ async function completeMeeting() {
   archiveCache.delete(meetingDate);
   await loadAgenda();
   if (data) alert("Meeting closed. " + data + " item" + (data === 1 ? "" : "s") + " carried to next week.");
+}
+
+// Pushes an item to the end of the agenda without marking it discussed, so
+// the clock moves straight on to the next topic and closing the meeting will
+// still offer to carry this one to next week.
+async function deferItem(id) {
+  const { error } = await supabaseClient.rpc("defer_agenda_item", { item: id });
+  if (error) {
+    alert(error.message);
+    return;
+  }
+  await loadAgenda();
 }
 
 async function reopenMeeting(date = meetingDate, fromArchive = false) {
@@ -745,6 +777,29 @@ function plannedSchedule() {
   });
 }
 
+// Moves the strip so it sits directly above whichever item the clock is on,
+// rather than stranded at the top of a long agenda. It is an <li> so the
+// ordered list's counter, which only counts .agenda-item, stays correct.
+// The clock strip is a child of the agenda list, so the list is emptied by
+// removing the rows rather than wiping innerHTML — which would destroy the
+// strip and leave renderMeetingClock writing into a detached node.
+function clearAgendaRows() {
+  for (const child of [...agendaList.children]) {
+    if (child !== meetingClock) child.remove();
+  }
+}
+
+function placeMeetingClock(currentItemId) {
+  if (meetingClock.classList.contains("hidden")) return;
+
+  const row = currentItemId
+    ? agendaList.querySelector(`[data-item="${currentItemId}"]`)
+    : null;
+
+  if (row) agendaList.insertBefore(meetingClock, row);
+  else agendaList.appendChild(meetingClock);
+}
+
 function renderMeetingClock() {
   const start = clockStart();
   const schedule = plannedSchedule();
@@ -817,10 +872,44 @@ function renderMeetingClock() {
   }
   meetingClock.appendChild(actualLine);
 
-  const elapsedLine = document.createElement("div");
-  elapsedLine.className = "clock-elapsed";
-  elapsedLine.textContent = `${Math.round(elapsed)} min elapsed`;
-  meetingClock.appendChild(elapsedLine);
+  // A bar of the whole meeting drawn to scale: each item's width is its share
+  // of the planned minutes, so you can see at a glance how much agenda is
+  // left rather than only how long the current item has.
+  const totalMins = (total.getTime() - start.getTime()) / 60000;
+  if (totalMins > 0) {
+    const bar = document.createElement("div");
+    bar.className = "clock-bar";
+
+    for (const slot of schedule) {
+      const mins = (slot.to.getTime() - slot.from.getTime()) / 60000;
+      const seg = document.createElement("div");
+      seg.className = "clock-seg";
+      if (slot.item.completed_at) seg.classList.add("done");
+      if (slot === planned && !overran) seg.classList.add("current");
+      seg.style.width = `${(mins / totalMins) * 100}%`;
+      seg.title = `${slot.item.title} — ${Math.round(mins)} min`;
+      bar.appendChild(seg);
+    }
+
+    // Where the clock has actually reached, capped so an overrun does not
+    // push the marker off the end of the bar.
+    const marker = document.createElement("div");
+    marker.className = "clock-marker" + (overran ? " over" : "");
+    marker.style.left = `${Math.min(elapsed / totalMins, 1) * 100}%`;
+    bar.appendChild(marker);
+
+    meetingClock.appendChild(bar);
+
+    const scale = document.createElement("div");
+    scale.className = "clock-scale";
+    const leftMins = Math.max(0, Math.round(totalMins - elapsed));
+    scale.innerHTML =
+      `<span>${Math.round(elapsed)} min elapsed</span>` +
+      `<span>${leftMins} min of agenda left</span>`;
+    meetingClock.appendChild(scale);
+  }
+
+  placeMeetingClock(planned?.item?.id);
 }
 
 // Re-render on a timer so the strip stays honest without anyone reloading.
@@ -945,12 +1034,13 @@ function renderMeetings() {
   attendanceHost.innerHTML = "";
   attendanceHost.appendChild(buildAttendanceBlock(isMeetingComplete()));
 
-  agendaList.innerHTML = "";
+  clearAgendaRows();
   for (const item of approved) {
     agendaList.appendChild(renderAgendaRow(item, { approved: true }));
   }
   agendaEmpty.classList.toggle("hidden", approved.length > 0);
 
+  // Rendered after the list exists, since it inserts itself into it.
   renderMeetingClock();
   syncClockTimer();
   agendaEmpty.textContent = isChair()
@@ -982,6 +1072,6 @@ function resetMeetings() {
   meetingDate = null;
   closeAgendaForm();
   suggestionList.innerHTML = "";
-  agendaList.innerHTML = "";
+  clearAgendaRows();
   setSection("tasks");
 }

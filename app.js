@@ -61,6 +61,7 @@ const fCalendarDays = $("f-calendar-days");
 const fProjectLabel = $("f-project-label");
 const fNotes = $("f-notes");
 
+const zoomLink = $("zoom-link");
 const labelOptions = $("label-options");
 const taskList = $("task-list");
 const emptyState = $("empty-state");
@@ -73,6 +74,10 @@ let currentMember = null;   // the signed-in user's roster row
 let editingId = null;       // null = creating a new task
 let currentView = "today";  // "today" | "all" | "mine" | "archive"
 let currentSection = "tasks";
+// Who enterApp() last ran for, so a token refresh for the same person is a
+// no-op rather than a full reload.
+let signedInUserId = null;
+let appSettings = {};
 
 function showScreen(screen) {
   for (const el of [loadingEl, authScreen, notMemberScreen, todoScreen]) {
@@ -286,6 +291,27 @@ window.addEventListener("hashchange", () => {
   if (route.section === "calendar") applyCalendarRoute(route);
   setSection(route.section);
 });
+
+// ---- Settings ----
+//
+// Board-wide values that are not anyone's personal preference. Only the Zoom
+// link so far.
+
+async function loadSettings() {
+  const { data, error } = await supabaseClient.from("app_settings").select("*");
+  if (error) {
+    console.error(error);
+    return;
+  }
+  appSettings = Object.fromEntries(data.map((row) => [row.key, row.value]));
+  renderZoomLink();
+}
+
+function renderZoomLink() {
+  const url = (appSettings.zoom_url || "").trim();
+  zoomLink.classList.toggle("hidden", !url);
+  if (url) zoomLink.href = url;
+}
 
 // ---- Sections ----
 //
@@ -981,6 +1007,7 @@ async function enterApp(session) {
   if (route?.section === "tasks" && route.view) currentView = route.view;
 
   await touchLastSeen();
+  await loadSettings();
   await loadMembers();
   await loadTasks();
   setView(currentView);
@@ -1027,6 +1054,9 @@ function exitApp() {
   members = [];
   membersById = new Map();
   currentMember = null;
+  signedInUserId = null;
+  appSettings = {};
+  zoomLink.classList.add("hidden");
   lastSeenStampedAt = 0;
   taskList.innerHTML = "";
   closeForm();
@@ -1042,8 +1072,20 @@ function exitApp() {
 // file is still running — starting any earlier races it.
 document.addEventListener("DOMContentLoaded", () => {
   supabaseClient.auth.onAuthStateChange((_event, session) => {
-    if (session) enterApp(session);
-    else exitApp();
+    if (!session) {
+      signedInUserId = null;
+      exitApp();
+      return;
+    }
+
+    // Supabase fires TOKEN_REFRESHED periodically, and typically the moment a
+    // tab regains focus. Re-entering the app there would reload everything and
+    // rebuild the DOM — throwing away any note someone was halfway through
+    // typing. Only act when the signed-in person actually changes.
+    if (session.user.id === signedInUserId) return;
+
+    signedInUserId = session.user.id;
+    enterApp(session);
   });
 
   // A failure here used to leave the page stuck on "Loading…" forever, so
@@ -1052,8 +1094,12 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const { data: { session }, error } = await supabaseClient.auth.getSession();
       if (error) throw error;
-      if (session) await enterApp(session);
-      else showScreen(authScreen);
+      if (session) {
+        signedInUserId = session.user.id;
+        await enterApp(session);
+      } else {
+        showScreen(authScreen);
+      }
     } catch (error) {
       console.error(error);
       showScreen(authScreen);

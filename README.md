@@ -90,7 +90,17 @@ each approved item showing its planned slot, and a strip at the top reads:
 So it distinguishes where the *clock* says you should be from where you
 *actually* are, the second derived from which items are marked discussed. Past
 the planned finish it says how far over. The strip refreshes every 20 seconds
-while a started agenda is on screen.
+while a started agenda is on screen, and **sits inline directly above whichever
+item the clock is on** rather than stranded at the top of a long agenda.
+
+Below it is a bar of the whole meeting **drawn to scale**: each item's width is
+its share of the planned minutes, discussed items shaded, the current one
+highlighted, and a marker at where the clock has actually reached — so how much
+agenda is left is visible at a glance, not just how long the current item has.
+
+**Skip for now** moves an item to the end of the agenda without marking it
+discussed, so the clock advances to the next topic. It stays undiscussed, so
+closing the meeting still offers to carry it to next week.
 
 Anchored to an actual start rather than a nominal hour on purpose: meetings
 rarely begin on time, and a schedule pinned to "7:00 PM" would report you
@@ -117,7 +127,12 @@ During the meeting, each approved item carries its own minutes block:
   **Ctrl+Enter** (Cmd+Enter on a Mac) adds a note without reaching for the
   button, and the cursor lands straight in the empty box ready for the next
   one — so a run of notes can be typed without touching the mouse. Plain Enter
-  still inserts a newline, since notes are often more than one line. Until you submit, what you have typed is local to your browser —
+  still inserts a newline, since notes are often more than one line.
+
+  A half-typed note is **held per agenda item and restored** whenever the box
+  is rebuilt — which happens every time anyone adds a note, records a motion or
+  casts a vote. It is also mirrored to browser storage, so it survives a reload
+  or the browser discarding a backgrounded tab. Until you submit, what you have typed is local to your browser —
   nobody else sees it, and it is not saved anywhere, so add notes as you go
   rather than composing a long one.
 - **Motions** — recorded against *any* item, whether or not it was flagged as
@@ -149,6 +164,11 @@ not marked discussed, you are asked whether to **carry them to next week** or
 archive them as they stand — left alone they would vanish into the archive
 undiscussed, which is the wrong default for a board. Carried items keep their
 order and land after anything already scheduled.
+
+**Suggestions the chair never got to always move forward**, whichever way that
+prompt is answered: the carry-or-archive choice is about items the board
+consciously decided not to reach, and a suggestion that was never considered at
+all is never something you meant to discard. Declined items stay put.
 
 A closed meeting is read-only: notes, motions, votes, attendance and
 reordering all lock, and the summary turns green. The chair or an admin can
@@ -318,7 +338,11 @@ Run these in the Supabase SQL Editor **in order**, once each:
     loads the 2026-27 school calendar and observation schedule.
 18. [`supabase/migration-015-meeting-clock.sql`](supabase/migration-015-meeting-clock.sql) —
     adds the meeting clock.
-19. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
+19. [`supabase/migration-016-settings-and-defer.sql`](supabase/migration-016-settings-and-defer.sql) —
+    adds the Zoom link setting and deferring an agenda item.
+20. [`supabase/migration-017-carry-suggestions.sql`](supabase/migration-017-carry-suggestions.sql) —
+    carries unconsidered suggestions to the next meeting.
+21. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
     loads the recorded staff absences.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key

@@ -28,6 +28,42 @@ let votesByMotion = new Map();
 let openMotionForm = null;   // agenda item id whose motion form is open
 let editingMotionId = null;
 
+// Half-typed notes, keyed by agenda item. The agenda re-renders whenever
+// anyone anywhere adds a note, records a motion or casts a vote, which
+// destroys the textarea being typed into. Holding the text here lets the
+// rebuilt box pick up exactly where it left off. Mirrored into localStorage
+// so it also survives a reload or the browser discarding a backgrounded tab.
+const noteDrafts = new Map();
+const DRAFT_KEY = "tca-note-drafts";
+
+function loadDrafts() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(DRAFT_KEY) || "{}");
+    for (const [itemId, text] of Object.entries(raw)) {
+      if (text) noteDrafts.set(itemId, text);
+    }
+  } catch {
+    // A corrupt or unavailable store must never stop the meeting.
+  }
+}
+
+function persistDrafts() {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(Object.fromEntries(noteDrafts)));
+  } catch {
+    // Private browsing and full quotas both throw here; the in-memory copy
+    // still covers re-renders, which is the common case.
+  }
+}
+
+function setDraft(itemId, text) {
+  if (text) noteDrafts.set(itemId, text);
+  else noteDrafts.delete(itemId);
+  persistDrafts();
+}
+
+loadDrafts();
+
 function memberName(id) {
   if (!id) return "Unknown";
   const member = membersById.get(id);
@@ -551,6 +587,10 @@ function buildMinutesBlock(item, readOnly) {
     textarea.rows = 2;
     textarea.required = true;
     textarea.placeholder = "Record a discussion point…  (Ctrl+Enter to add)";
+    textarea.value = noteDrafts.get(item.id) ?? "";
+
+    // Every keystroke, so nothing is lost however the rebuild is triggered.
+    textarea.addEventListener("input", () => setDraft(item.id, textarea.value));
 
     const submit = document.createElement("button");
     submit.type = "submit";
@@ -576,6 +616,9 @@ function buildMinutesBlock(item, readOnly) {
 
       const itemId = item.id;
       submit.disabled = true;
+      // Cleared before the write, so the rebuilt box comes back empty rather
+      // than repopulating with the note that was just filed.
+      setDraft(itemId, "");
       await addNote(itemId, body);
 
       // By now this form is detached and a fresh one has taken its place, so

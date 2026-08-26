@@ -1260,3 +1260,109 @@ button:disabled { opacity: 0.6; cursor: default; }
 }
 
 .note-author:first-of-type { margin-top: 4px; }
+
+/* ---- Zoom link ---- */
+
+.zoom-btn {
+  display: inline-block;
+  background: #2d8cff;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 8px;
+  text-decoration: none;
+  margin-bottom: 4px;
+}
+
+.zoom-btn:hover { background: #1a7ae8; color: #fff; }
+
+.zoom-form {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  background: var(--subtle-bg);
+}
+
+.zoom-form label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.zoom-row { display: flex; gap: 8px; }
+.zoom-row input { flex: 1; font-size: 14px; }
+.zoom-row button { white-space: nowrap; }
+.zoom-hint { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+.zoom-form .message { margin-top: 4px; }
+
+/* ---- Skip alongside Mark as discussed ---- */
+
+.item-actions { display: flex; gap: 8px; margin-top: 12px; }
+.item-actions .discuss-btn { margin-top: 0; flex: 1; }
+
+.skip-btn {
+  flex-shrink: 0;
+  padding: 11px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--muted);
+  border: 1.5px solid var(--border);
+}
+
+.skip-btn:hover { background: #fff2d9; border-color: #b8860b; color: #8a5a00; }
+
+/* ---- Clock progress bar ---- */
+
+.meeting-clock.agenda-item,
+li.meeting-clock { display: block; list-style: none; }
+
+.clock-bar {
+  position: relative;
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-top: 10px;
+  background: #ececf0;
+}
+
+.clock-seg {
+  height: 100%;
+  background: #dde3ee;
+  border-right: 1px solid var(--card-bg);
+}
+
+.clock-seg:last-child { border-right: none; }
+.clock-seg.done { background: #bcd9c6; }
+.clock-seg.current { background: var(--accent); }
+
+.clock-marker {
+  position: absolute;
+  top: -2px;
+  width: 2px;
+  height: 14px;
+  background: var(--text);
+  border-radius: 1px;
+}
+
+.clock-marker.over { background: var(--danger); }
+
+.clock-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 5px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 560px) {
+  .item-actions { flex-direction: column; }
+  .skip-btn { width: 100%; }
+}
