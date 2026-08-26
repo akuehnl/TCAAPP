@@ -91,20 +91,30 @@ function votingMembers() {
   return members.filter((m) => m.is_active && m.can_vote !== false);
 }
 
+// Votes were recorded as "yea" before migration 018 renamed them. Reading
+// through this means those rows still display correctly even if the migration
+// has not been run yet — otherwise a frontend deploy landing first makes real
+// votes look deleted, which is alarming and wrong. Safe to drop once no "yea"
+// rows remain.
+function normalizeVote(vote) {
+  return vote === "yea" ? "aye" : vote;
+}
+
 // Counted from the roll call rather than stored, so the tally can never drift
 // out of step with the individual votes.
 function tallyFor(motionId) {
-  const votes = votesByMotion.get(motionId) ?? [];
+  const votes = (votesByMotion.get(motionId) ?? []).map((v) => normalizeVote(v.vote));
   return {
-    aye: votes.filter((v) => v.vote === "aye").length,
-    nay: votes.filter((v) => v.vote === "nay").length,
-    abstain: votes.filter((v) => v.vote === "abstain").length,
+    aye: votes.filter((v) => v === "aye").length,
+    nay: votes.filter((v) => v === "nay").length,
+    abstain: votes.filter((v) => v === "abstain").length,
   };
 }
 
 function voteOf(motionId, memberId) {
   const votes = votesByMotion.get(motionId) ?? [];
-  return votes.find((v) => v.member_id === memberId)?.vote ?? null;
+  const found = votes.find((v) => v.member_id === memberId);
+  return found ? normalizeVote(found.vote) : null;
 }
 
 // ---- Data ----
