@@ -90,8 +90,13 @@ each approved item showing its planned slot, and a strip at the top reads:
 So it distinguishes where the *clock* says you should be from where you
 *actually* are, the second derived from which items are marked discussed. Past
 the planned finish it says how far over. The strip refreshes every 20 seconds
-while a started agenda is on screen, and **sits inline directly above whichever
-item the clock is on** rather than stranded at the top of a long agenda.
+while a started agenda is on screen.
+
+It **sits inline directly above the item being discussed** — the first one not
+yet ticked off — so marking an item discussed walks the strip down to the next
+topic. That is deliberately the *actual* position rather than the wall-clock
+one: the clock's own position is already reported in the text, and a strip that
+only moved when time passed would drift away from whatever you are looking at.
 
 Below it is a bar of the whole meeting **drawn to scale**: each item's width is
 its share of the planned minutes, discussed items shaded, the current one

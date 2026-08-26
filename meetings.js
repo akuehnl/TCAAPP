@@ -885,7 +885,7 @@ function renderMeetingClock() {
       const seg = document.createElement("div");
       seg.className = "clock-seg";
       if (slot.item.completed_at) seg.classList.add("done");
-      if (slot === planned && !overran) seg.classList.add("current");
+      if (actual && slot === actual) seg.classList.add("current");
       seg.style.width = `${(mins / totalMins) * 100}%`;
       seg.title = `${slot.item.title} — ${Math.round(mins)} min`;
       bar.appendChild(seg);
@@ -909,7 +909,11 @@ function renderMeetingClock() {
     meetingClock.appendChild(scale);
   }
 
-  placeMeetingClock(planned?.item?.id);
+  // Follows the item actually being discussed — the first one not ticked off
+  // — so marking an item discussed moves the strip down to the next topic.
+  // Positioning it by the wall-clock item instead meant it only moved when
+  // time passed, which is not what you are looking at during the meeting.
+  placeMeetingClock(actual?.item?.id ?? null);
 }
 
 // Re-render on a timer so the strip stays honest without anyone reloading.
