@@ -1367,3 +1367,57 @@ li.meeting-clock { display: block; list-style: none; }
   .item-actions { flex-direction: column; }
   .skip-btn { width: 100%; }
 }
+
+/* ---- Narrow screens: action columns stack instead of stealing width ----
+   These rows are laid out as [content | buttons]. On a phone the button
+   column wins the fight for space — measured at 390px, the agenda buttons
+   took 158px of 324, leaving the note body 7px and rendering one sentence as
+   53 single-character lines. Wrapping the buttons onto their own row gives
+   the text the full width.
+
+   At the end of the file on purpose: a media query adds no specificity, so
+   placed above the rules it overrides it would silently lose. */
+@media (max-width: 560px) {
+  .agenda-item,
+  .minute-note,
+  .motion-row,
+  .person-row,
+  .task-item,
+  .cal-list-row { flex-wrap: wrap; }
+
+  /* Content keeps the first row and may shrink; buttons take a full row. */
+  .agenda-body,
+  .minute-main,
+  .person-body,
+  .cal-list-body { flex: 1 1 auto; min-width: 0; }
+
+  .agenda-actions,
+  .minute-actions,
+  .person-actions,
+  .task-actions {
+    flex: 1 1 100%;
+    max-width: none;
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-end;
+    margin-top: 6px;
+  }
+
+  /* A textarea beside a button leaves neither usable. */
+  .note-form,
+  .guest-form,
+  .motion-row-fields { flex-direction: column; }
+
+  .note-form button,
+  .guest-form button,
+  .motion-row-fields select { width: 100%; }
+
+  /* Name above the choices, so the options get the full width and stay
+     comfortably tappable. */
+  .roll-row,
+  .attend-row { flex-direction: column; align-items: flex-start; gap: 5px; }
+  .roll-options, .attend-options { width: 100%; }
+  .roll-name, .attend-name { min-width: 0; }
+
+  .vote-option, .attend-option { padding: 6px 12px; font-size: 12.5px; }
+}
