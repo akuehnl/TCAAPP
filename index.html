@@ -45,7 +45,10 @@
     <div class="header-row">
       <h1>TCA Tasks</h1>
       <div class="header-right">
-        <a id="zoom-link" class="zoom-btn hidden" target="_blank" rel="noopener noreferrer">Join Zoom</a>
+        <div class="zoom-links">
+          <a id="zoom-link" class="zoom-btn hidden" target="_blank" rel="noopener noreferrer">TCA Zoom</a>
+          <a id="concordis-link" class="zoom-btn concordis hidden" target="_blank" rel="noopener noreferrer">Concordis Zoom</a>
+        </div>
         <span id="user-email"></span>
         <button id="sign-out-btn" class="link-btn">Sign out</button>
       </div>
@@ -254,15 +257,6 @@
     <!-- ================= People ================= -->
     <div id="people-section" class="hidden">
 
-      <form id="zoom-form" class="zoom-form hidden">
-        <label for="zoom-url-input">Zoom meeting link</label>
-        <div class="zoom-row">
-          <input type="url" id="zoom-url-input" placeholder="https://zoom.us/j/…" maxlength="500" />
-          <button type="submit" id="zoom-save">Save</button>
-        </div>
-        <p class="zoom-hint">Shown as a Join Zoom button at the top of every page.</p>
-        <span id="zoom-message" class="message"></span>
-      </form>
 
       <p class="section-intro" id="people-intro"></p>
 
@@ -315,6 +309,23 @@
 
       <div id="people-list"></div>
       <p class="message" id="people-message"></p>
+
+      <form id="zoom-form" class="zoom-form hidden">
+        <h3 class="zoom-heading">Meeting links</h3>
+
+        <label for="zoom-url-input">TCA Zoom</label>
+        <input type="url" id="zoom-url-input" placeholder="https://zoom.us/j/…" maxlength="500" />
+
+        <label for="concordis-url-input">Concordis Zoom</label>
+        <input type="url" id="concordis-url-input" placeholder="https://…zoom.us/my/…" maxlength="500" />
+
+        <p class="zoom-hint">Both appear as buttons at the top of every page. Leave one blank to hide its button.</p>
+
+        <div class="zoom-actions">
+          <button type="submit" id="zoom-save">Save links</button>
+          <span id="zoom-message" class="message"></span>
+        </div>
+      </form>
     </div><!-- /#people-section -->
 
     <!-- ================= School calendar ================= -->

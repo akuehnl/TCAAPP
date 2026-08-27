@@ -61,7 +61,11 @@ const fCalendarDays = $("f-calendar-days");
 const fProjectLabel = $("f-project-label");
 const fNotes = $("f-notes");
 
-const zoomLink = $("zoom-link");
+// key in app_settings -> the button that opens it
+const ZOOM_LINKS = [
+  ["zoom_url", "zoom-link"],
+  ["concordis_zoom_url", "concordis-link"],
+];
 const labelOptions = $("label-options");
 const taskList = $("task-list");
 const emptyState = $("empty-state");
@@ -308,9 +312,13 @@ async function loadSettings() {
 }
 
 function renderZoomLink() {
-  const url = (appSettings.zoom_url || "").trim();
-  zoomLink.classList.toggle("hidden", !url);
-  if (url) zoomLink.href = url;
+  for (const [key, elementId] of ZOOM_LINKS) {
+    const el = $(elementId);
+    const url = (appSettings[key] || "").trim();
+    // A link that has not been set gets no button, rather than a dead one.
+    el.classList.toggle("hidden", !url);
+    if (url) el.href = url;
+  }
 }
 
 // ---- Sections ----
@@ -1056,7 +1064,7 @@ function exitApp() {
   currentMember = null;
   signedInUserId = null;
   appSettings = {};
-  zoomLink.classList.add("hidden");
+  for (const [, elementId] of ZOOM_LINKS) $(elementId).classList.add("hidden");
   lastSeenStampedAt = 0;
   taskList.innerHTML = "";
   closeForm();

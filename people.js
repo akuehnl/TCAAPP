@@ -15,6 +15,7 @@ const peopleMessage = $("people-message");
 const peopleToolbar = $("people-toolbar");
 const zoomForm = $("zoom-form");
 const zoomUrlInput = $("zoom-url-input");
+const concordisUrlInput = $("concordis-url-input");
 const zoomSave = $("zoom-save");
 const zoomMessage = $("zoom-message");
 
@@ -215,32 +216,42 @@ function formatLastSeen(iso) {
 // enforced by the app_settings update policy as well as hidden here.
 zoomForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const url = zoomUrlInput.value.trim();
 
-  if (url && !/^https?:\/\//i.test(url)) {
-    setMessage(zoomMessage, "The link needs to start with https://", "error");
+  const edits = [
+    { key: "zoom_url", label: "TCA Zoom", value: zoomUrlInput.value.trim() },
+    { key: "concordis_zoom_url", label: "Concordis Zoom", value: concordisUrlInput.value.trim() },
+  ];
+
+  const bad = edits.find((f) => f.value && !/^https?:\/\//i.test(f.value));
+  if (bad) {
+    setMessage(zoomMessage, `The ${bad.label} link needs to start with https://`, "error");
     return;
   }
 
   zoomSave.disabled = true;
   setMessage(zoomMessage, "Saving…");
 
-  const { error } = await supabaseClient
-    .from("app_settings")
-    .update({ value: url || null, updated_at: new Date().toISOString(),
-              updated_by: currentMember?.id ?? null })
-    .eq("key", "zoom_url");
+  const results = await Promise.all(edits.map((f) =>
+    supabaseClient.from("app_settings")
+      .update({ value: f.value || null, updated_at: new Date().toISOString(),
+                updated_by: currentMember?.id ?? null })
+      .eq("key", f.key)
+  ));
 
   zoomSave.disabled = false;
 
-  if (error) {
-    setMessage(zoomMessage, error.message, "error");
+  const failed = results.find((r) => r.error);
+  if (failed) {
+    setMessage(zoomMessage, failed.error.message, "error");
     return;
   }
 
-  appSettings.zoom_url = url || null;
+  for (const f of edits) appSettings[f.key] = f.value || null;
   renderZoomLink();
-  setMessage(zoomMessage, url ? "Saved. The Join Zoom button is live." : "Cleared.", "success");
+
+  const live = edits.filter((f) => f.value).length;
+  setMessage(zoomMessage,
+    live ? `Saved. ${live} link${live === 1 ? "" : "s"} live.` : "Both links cleared.", "success");
 });
 
 function roleBadge(text, className) {
@@ -364,6 +375,9 @@ function renderPeople() {
   // by a realtime refresh.
   if (document.activeElement !== zoomUrlInput) {
     zoomUrlInput.value = appSettings.zoom_url ?? "";
+  }
+  if (document.activeElement !== concordisUrlInput) {
+    concordisUrlInput.value = appSettings.concordis_zoom_url ?? "";
   }
   if (!isAdmin()) closePersonForm();
 

@@ -48,7 +48,9 @@ h2 { margin: 0 0 16px; font-size: 16px; font-weight: 600; }
 input[type="email"],
 input[type="password"],
 input[type="text"],
+input[type="url"],
 input[type="date"],
+input[type="time"],
 input[type="number"],
 select,
 textarea {
@@ -1294,11 +1296,18 @@ button:disabled { opacity: 0.6; cursor: default; }
   margin-bottom: 6px;
 }
 
-.zoom-row { display: flex; gap: 8px; }
-.zoom-row input { flex: 1; font-size: 14px; }
-.zoom-row button { white-space: nowrap; }
-.zoom-hint { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
-.zoom-form .message { margin-top: 4px; }
+.zoom-links { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.zoom-btn.concordis { background: #5b47b8; }
+.zoom-btn.concordis:hover { background: #4b39a0; }
+
+/* Sits at the foot of the People page: reference, not the main content. */
+.zoom-form { margin-top: 24px; margin-bottom: 0; }
+.zoom-heading { font-size: 14px; font-weight: 600; margin: 0 0 12px; }
+.zoom-form input { font-size: 14px; margin-bottom: 12px; }
+.zoom-form label { margin-top: 2px; }
+.zoom-hint { font-size: 12px; color: var(--muted); margin: 0 0 12px; }
+.zoom-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.zoom-actions .message { margin-top: 0; }
 
 /* ---- Skip alongside Mark as discussed ---- */
 

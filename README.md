@@ -263,6 +263,10 @@ From the People section an admin can change the chair, grant or revoke admin,
 activate or deactivate someone, and add a new person. Editing an existing
 person's role, email, or capacity is still a SQL edit.
 
+At the foot of the People page an admin sets the **meeting links** — the TCA
+Zoom and the Concordis Zoom — each appearing as a button at the top of every
+page. A link left blank simply has no button, rather than an dead one.
+
 Each row also shows when that person **last used the app** — relative for
 recent activity ("5 hours ago"), a date once it is over a week old, with the
 exact timestamp on hover. This is tracked in `members.last_seen_at` rather
@@ -353,7 +357,9 @@ Run these in the Supabase SQL Editor **in order**, once each:
     carries unconsidered suggestions to the next meeting.
 21. [`supabase/migration-018-aye-and-remote.sql`](supabase/migration-018-aye-and-remote.sql) —
     renames the aye vote and adds attending via Zoom.
-22. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
+22. [`supabase/migration-019-concordis-zoom.sql`](supabase/migration-019-concordis-zoom.sql) —
+    adds the Concordis meeting link.
+23. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
     loads the recorded staff absences.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key
