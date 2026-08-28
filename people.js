@@ -16,6 +16,7 @@ const peopleToolbar = $("people-toolbar");
 const zoomForm = $("zoom-form");
 const zoomUrlInput = $("zoom-url-input");
 const concordisUrlInput = $("concordis-url-input");
+const driveUrlInput = $("drive-url-input");
 const zoomSave = $("zoom-save");
 const zoomMessage = $("zoom-message");
 
@@ -220,6 +221,7 @@ zoomForm.addEventListener("submit", async (e) => {
   const edits = [
     { key: "zoom_url", label: "TCA Zoom", value: zoomUrlInput.value.trim() },
     { key: "concordis_zoom_url", label: "Concordis Zoom", value: concordisUrlInput.value.trim() },
+    { key: "drive_url", label: "Shared Drive", value: driveUrlInput.value.trim() },
   ];
 
   const bad = edits.find((f) => f.value && !/^https?:\/\//i.test(f.value));
@@ -378,6 +380,9 @@ function renderPeople() {
   }
   if (document.activeElement !== concordisUrlInput) {
     concordisUrlInput.value = appSettings.concordis_zoom_url ?? "";
+  }
+  if (document.activeElement !== driveUrlInput) {
+    driveUrlInput.value = appSettings.drive_url ?? "";
   }
   if (!isAdmin()) closePersonForm();
 

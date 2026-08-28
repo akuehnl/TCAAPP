@@ -62,9 +62,10 @@ const fProjectLabel = $("f-project-label");
 const fNotes = $("f-notes");
 
 // key in app_settings -> the button that opens it
-const ZOOM_LINKS = [
+const APP_LINKS = [
   ["zoom_url", "zoom-link"],
   ["concordis_zoom_url", "concordis-link"],
+  ["drive_url", "drive-link"],
 ];
 const labelOptions = $("label-options");
 const taskList = $("task-list");
@@ -312,7 +313,7 @@ async function loadSettings() {
 }
 
 function renderZoomLink() {
-  for (const [key, elementId] of ZOOM_LINKS) {
+  for (const [key, elementId] of APP_LINKS) {
     const el = $(elementId);
     const url = (appSettings[key] || "").trim();
     // A link that has not been set gets no button, rather than a dead one.
@@ -1064,7 +1065,7 @@ function exitApp() {
   currentMember = null;
   signedInUserId = null;
   appSettings = {};
-  for (const [, elementId] of ZOOM_LINKS) $(elementId).classList.add("hidden");
+  for (const [, elementId] of APP_LINKS) $(elementId).classList.add("hidden");
   lastSeenStampedAt = 0;
   taskList.innerHTML = "";
   closeForm();

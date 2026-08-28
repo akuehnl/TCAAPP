@@ -1299,6 +1299,8 @@ button:disabled { opacity: 0.6; cursor: default; }
 .zoom-links { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .zoom-btn.concordis { background: #5b47b8; }
 .zoom-btn.concordis:hover { background: #4b39a0; }
+.zoom-btn.drive { background: #188038; }
+.zoom-btn.drive:hover { background: #12692d; }
 
 /* Sits at the foot of the People page: reference, not the main content. */
 .zoom-form { margin-top: 24px; margin-bottom: 0; }

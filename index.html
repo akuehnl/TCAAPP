@@ -48,6 +48,7 @@
         <div class="zoom-links">
           <a id="zoom-link" class="zoom-btn hidden" target="_blank" rel="noopener noreferrer">TCA Zoom</a>
           <a id="concordis-link" class="zoom-btn concordis hidden" target="_blank" rel="noopener noreferrer">Concordis Zoom</a>
+          <a id="drive-link" class="zoom-btn drive hidden" target="_blank" rel="noopener noreferrer">Shared Drive</a>
         </div>
         <span id="user-email"></span>
         <button id="sign-out-btn" class="link-btn">Sign out</button>
@@ -311,7 +312,7 @@
       <p class="message" id="people-message"></p>
 
       <form id="zoom-form" class="zoom-form hidden">
-        <h3 class="zoom-heading">Meeting links</h3>
+        <h3 class="zoom-heading">Shared links</h3>
 
         <label for="zoom-url-input">TCA Zoom</label>
         <input type="url" id="zoom-url-input" placeholder="https://zoom.us/j/…" maxlength="500" />
@@ -319,7 +320,10 @@
         <label for="concordis-url-input">Concordis Zoom</label>
         <input type="url" id="concordis-url-input" placeholder="https://…zoom.us/my/…" maxlength="500" />
 
-        <p class="zoom-hint">Both appear as buttons at the top of every page. Leave one blank to hide its button.</p>
+        <label for="drive-url-input">Shared Drive</label>
+        <input type="url" id="drive-url-input" placeholder="https://drive.google.com/drive/folders/…" maxlength="500" />
+
+        <p class="zoom-hint">Each appears as a button at the top of every page. Leave one blank to hide its button.</p>
 
         <div class="zoom-actions">
           <button type="submit" id="zoom-save">Save links</button>
