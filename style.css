@@ -626,6 +626,9 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 .time-badge { background: #e8f0fe; color: #10529c; }
 .motion-badge { background: #ede4ff; color: #5b21b6; }
+/* Amber rather than red: an item waiting a second week is worth noticing,
+   but it is not an error. */
+.held-badge { background: #fff2d9; color: #8a5a00; }
 
 .agenda-description {
   font-size: 13px;

@@ -41,6 +41,12 @@ const aSave = $("a-save");
 const aCancel = $("a-cancel");
 
 let agendaItems = [];
+// Suggestions left behind on an earlier meeting date. complete_meeting() rolls
+// these forward when a meeting is closed, but only if it is closed — a meeting
+// that was simply never marked complete would otherwise bury every topic
+// raised for it. Kept in their own list rather than merged into agendaItems so
+// they can never leak into the approved agenda, the clock or the minutes.
+let heldOverItems = [];
 let meetingDate = null;            // ISO date of the meeting being planned
 let meetingSubView = "suggestions"; // "suggestions" | "agenda" | "completed"
 let meetingRecord = null;           // the `meetings` row, if one exists yet
@@ -158,9 +164,33 @@ async function loadAgenda() {
   if (meetingRes.error) console.error(meetingRes.error);
   meetingRecord = meetingRes.data ?? null;
 
+  await loadHeldOver();
   await loadAttendance(meetingDate);
   await loadMinutes(agendaItems.filter((i) => i.status === "approved").map((i) => i.id));
   renderMeetings();
+}
+
+// Only gathered while looking at the next meeting still ahead. Paging back
+// through history should show each past meeting as it actually was, and
+// listing strays on every future week as well would show the same item over
+// and over rather than in the one place the board will next deal with it.
+async function loadHeldOver() {
+  heldOverItems = [];
+  if (meetingDate !== toIsoDate(upcomingMeeting())) return;
+
+  const { data, error } = await supabaseClient
+    .from("agenda_items")
+    .select("*")
+    .eq("status", "suggested")
+    .lt("meeting_date", meetingDate)
+    .order("meeting_date", { ascending: true })
+    .order("inserted_at", { ascending: true });
+
+  if (error) {
+    console.error(error);
+    return;
+  }
+  heldOverItems = data;
 }
 
 function isMeetingComplete() {
@@ -207,7 +237,13 @@ async function deleteAgendaItem(id) {
 
 async function approveItem(id) {
   const next = approvedItems().length;
-  const error = await updateAgendaItem(id, { status: "approved", sort_order: next });
+  // Setting the date matters for a held-over item: approving it is what
+  // finally moves it off the old meeting and onto this one.
+  const error = await updateAgendaItem(id, {
+    status: "approved",
+    sort_order: next,
+    meeting_date: meetingDate,
+  });
   if (error) console.error(error);
   else await loadAgenda();
 }
@@ -345,6 +381,17 @@ function agendaBadges(item) {
     declined.className = "badge label-badge";
     declined.textContent = "Declined";
     wrap.appendChild(declined);
+  }
+
+  // Only a held-over suggestion can sit on a date other than the one being
+  // viewed. Saying which meeting it came from keeps it honest — the item is
+  // not new, it has been waiting.
+  if (item.meeting_date && item.meeting_date !== meetingDate) {
+    const held = document.createElement("span");
+    held.className = "badge held-badge";
+    held.textContent = "Held over from " + parseDateOnly(item.meeting_date)
+      .toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    wrap.appendChild(held);
   }
 
   return wrap;
@@ -1003,7 +1050,8 @@ function renderMeetings() {
   const approved = approvedItems();
   const suggestions = suggestedItems();
 
-  tabSuggestions.textContent = `Suggestions (${suggestions.filter((i) => i.status === "suggested").length})`;
+  const pending = suggestions.filter((i) => i.status === "suggested").length + heldOverItems.length;
+  tabSuggestions.textContent = `Suggestions (${pending})`;
   tabAgenda.textContent = `Approved agenda (${approved.length})`;
 
   newAgendaBtn.textContent = isChair() && meetingSubView === "agenda"
@@ -1027,10 +1075,16 @@ function renderMeetings() {
   meetingsSectionComplete(complete);
 
   suggestionList.innerHTML = "";
+  // Held over first: they have already waited a week, so they should not sit
+  // below topics raised this morning.
+  for (const item of heldOverItems) {
+    suggestionList.appendChild(renderAgendaRow(item, { approved: false }));
+  }
   for (const item of suggestions) {
     suggestionList.appendChild(renderAgendaRow(item, { approved: false }));
   }
-  suggestionsEmpty.classList.toggle("hidden", suggestions.length > 0);
+  const anySuggestions = suggestions.length + heldOverItems.length > 0;
+  suggestionsEmpty.classList.toggle("hidden", anySuggestions);
   suggestionsEmpty.textContent = "No suggestions yet for this meeting — add the first one above.";
 
   // Attendance is taken before discussion starts, so it sits above the agenda.
@@ -1073,6 +1127,7 @@ function resetMeetings() {
     clockTimer = null;
   }
   agendaItems = [];
+  heldOverItems = [];
   meetingDate = null;
   closeAgendaForm();
   suggestionList.innerHTML = "";

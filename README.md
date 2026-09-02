@@ -362,7 +362,10 @@ Run these in the Supabase SQL Editor **in order**, once each:
     adds the Concordis meeting link.
 23. [`supabase/migration-020-drive-link.sql`](supabase/migration-020-drive-link.sql) —
     adds the shared Drive folder link.
-24. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
+24. [`supabase/migration-021-carry-suggestions-forward.sql`](supabase/migration-021-carry-suggestions-forward.sql) —
+    lands carried suggestions on the next meeting still ahead, and rescues any
+    already stranded on a past date.
+25. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
     loads the recorded staff absences.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key
