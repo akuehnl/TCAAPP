@@ -335,13 +335,13 @@
     <!-- ================= School calendar ================= -->
     <div id="calendar-section" class="hidden">
 
-      <div class="meeting-nav">
-        <button type="button" class="icon-btn" id="cal-prev" title="Previous month">&lsaquo;</button>
+      <!-- The month steppers live down beside the grid, not up here, so they
+           are on screen whenever the month you would page away from is. -->
+      <div class="meeting-nav cal-nav">
         <div class="meeting-heading">
           <span class="meeting-label">School calendar</span>
           <span class="meeting-date" id="cal-month"></span>
         </div>
-        <button type="button" class="icon-btn" id="cal-next" title="Next month">&rsaquo;</button>
       </div>
 
       <div class="tabs" role="tablist">
@@ -413,9 +413,24 @@
 
       <div class="cal-filters" id="cal-filters"></div>
 
+      <!-- Both steppers sit inside the grid view, so switching to Upcoming
+           hides them without any extra bookkeeping — paging by month means
+           nothing in a list that runs across the year. -->
       <div id="cal-grid-view">
+        <div class="cal-stepper">
+          <button type="button" class="icon-btn" data-cal-step="-1" title="Previous month">&lsaquo;</button>
+          <span class="cal-stepper-month"></span>
+          <button type="button" class="icon-btn" data-cal-step="1" title="Next month">&rsaquo;</button>
+        </div>
+
         <div class="cal-grid-wrap">
           <div id="cal-grid" class="cal-grid"></div>
+        </div>
+
+        <div class="cal-stepper">
+          <button type="button" class="icon-btn" data-cal-step="-1" title="Previous month">&lsaquo;</button>
+          <span class="cal-stepper-month"></span>
+          <button type="button" class="icon-btn" data-cal-step="1" title="Next month">&rsaquo;</button>
         </div>
       </div>
 

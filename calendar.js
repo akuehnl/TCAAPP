@@ -22,8 +22,10 @@ const CATEGORY_LABEL = Object.fromEntries(EVENT_CATEGORIES);
 const WEEKDAYS = ["Sun", "M", "T", "W", "TH", "F", "Sat"];
 
 const calMonthEl = $("cal-month");
-const calPrev = $("cal-prev");
-const calNext = $("cal-next");
+// One stepper above the grid and one below, so the arrows are in reach from
+// either end of a tall month.
+const calSteppers = Array.from(document.querySelectorAll(".cal-stepper"));
+const calStepperMonths = Array.from(document.querySelectorAll(".cal-stepper-month"));
 const calTodayBtn = $("cal-today-btn");
 const tabCalGrid = $("tab-cal-grid");
 const tabCalList = $("tab-cal-list");
@@ -211,9 +213,8 @@ function setCalView(view) {
   tabCalList.classList.toggle("active", view === "list");
   calGridView.classList.toggle("hidden", view !== "grid");
   calListView.classList.toggle("hidden", view !== "list");
-  // Paging by month is meaningless in a list that runs across the year.
-  calPrev.classList.toggle("hidden", view !== "grid");
-  calNext.classList.toggle("hidden", view !== "grid");
+  // The steppers live inside #cal-grid-view, so hiding that hides them too —
+  // paging by month is meaningless in a list that runs across the year.
   syncRoute();
   renderCalendar();
 }
@@ -221,17 +222,24 @@ function setCalView(view) {
 tabCalGrid.addEventListener("click", () => setCalView("grid"));
 tabCalList.addEventListener("click", () => setCalView("list"));
 
-calPrev.addEventListener("click", () => {
-  calMonth = shiftMonth(calMonth, -1);
+// Paging from the bottom stepper leaves you at the bottom of a different
+// month, looking at its last week rather than its first, so scroll the grid
+// back into view. Skipped when the top stepper was used — it is already in
+// view, and yanking the page around under a click nobody expects to scroll
+// is worse than doing nothing.
+function stepMonth(delta, fromBottom) {
+  calMonth = shiftMonth(calMonth, delta);
   syncRoute();
   renderCalendar();
-});
+  if (fromBottom) calGridView.scrollIntoView({ block: "start", behavior: "smooth" });
+}
 
-calNext.addEventListener("click", () => {
-  calMonth = shiftMonth(calMonth, 1);
-  syncRoute();
-  renderCalendar();
-});
+for (const [index, stepper] of calSteppers.entries()) {
+  const fromBottom = index > 0;
+  for (const btn of stepper.querySelectorAll("[data-cal-step]")) {
+    btn.addEventListener("click", () => stepMonth(Number(btn.dataset.calStep), fromBottom));
+  }
+}
 
 calTodayBtn.addEventListener("click", () => {
   calMonth = monthKey(new Date());
@@ -465,6 +473,10 @@ function renderCalendar() {
   calMonthEl.textContent = calView === "grid"
     ? formatMonth(calMonth)
     : `${shown} of ${calendarEvents.length} events`;
+
+  // Named in both steppers, so the one at the foot of a long month says which
+  // month it belongs to without scrolling back up to find out.
+  for (const label of calStepperMonths) label.textContent = formatMonth(calMonth);
 
   renderCalFilters();
   if (calView === "grid") renderCalGrid();

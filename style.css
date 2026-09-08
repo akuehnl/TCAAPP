@@ -560,6 +560,34 @@ button:disabled { opacity: 0.6; cursor: default; }
   border-radius: 8px;
 }
 
+/* The calendar heading has no arrows beside it any more, so centre what is
+   left rather than letting space-between push it to the edge. */
+.cal-nav { justify-content: center; }
+
+.cal-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 10px 0;
+}
+
+/* Bigger than the arrows this replaced in the heading: they are now the only
+   way to change month, and they are tapped with a thumb on a phone. */
+.cal-stepper .icon-btn {
+  font-size: 22px;
+  line-height: 1;
+  padding: 8px 18px;
+  border-radius: 8px;
+  min-width: 52px;
+}
+
+.cal-stepper-month {
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+}
+
 .meeting-summary {
   font-size: 13px;
   color: var(--muted);

@@ -285,7 +285,9 @@ async function moveItem(id, direction) {
 
 function openAgendaForm(item) {
   editingAgendaId = item ? item.id : null;
-  agendaFormHeading.textContent = item ? "Edit agenda item" : "Suggest an agenda item";
+  agendaFormHeading.textContent = !item
+    ? "Suggest an agenda item"
+    : item.status === "approved" ? "Edit agenda item" : "Edit suggestion";
   aSave.textContent = item ? "Save changes" : "Submit suggestion";
   setMessage(agendaMessage, "");
 
@@ -457,9 +459,14 @@ function renderAgendaRow(item, { approved }) {
     }
   } else if (isChair()) {
     if (item.status === "suggested") {
+      // Editing before approving matters: the chair often needs to sharpen a
+      // title or set a realistic time estimate before an item goes on the
+      // agenda, and doing that afterwards means the board approved wording
+      // nobody has seen.
       actions.append(
         actionButton("Approve", () => approveItem(item.id), "approve-btn"),
-        actionButton("Decline", () => declineItem(item.id))
+        actionButton("Decline", () => declineItem(item.id)),
+        actionButton("Edit", () => openAgendaForm(item))
       );
     } else {
       actions.append(actionButton("Restore", () => returnToSuggestions(item.id)));
