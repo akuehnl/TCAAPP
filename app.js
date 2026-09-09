@@ -455,10 +455,12 @@ function openForm(task) {
   setMessage(formMessage, "");
 
   fTitle.value = task?.title ?? "";
-  // A new task in "My tasks" defaults to me — that's the common case there.
+  // A new task defaults to whoever is creating it — most tasks are written
+  // down by the person who is going to do them, and handing it to someone else
+  // is one click from here.
   fAssignee.value = task
     ? (task.assign_to_all ? "all" : (task.assignee_id ?? ""))
-    : (currentView === "mine" && currentMember ? currentMember.id : "");
+    : (currentMember?.id ?? "");
   fDueDate.value = task?.due_date ?? "";
   fPriority.value = task?.priority ?? "medium";
   fStatus.value = task?.is_complete ? "done" : "open";
