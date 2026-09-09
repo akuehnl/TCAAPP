@@ -487,10 +487,10 @@ function renderAgendaRow(item, { approved }) {
     // Sits below the minutes: you tick the item off once the discussion is
     // written up, not before. Open to any member, like the rest of minute
     // taking.
-    if (!isMeetingComplete()) {
-      const actionRow = document.createElement("div");
-      actionRow.className = "item-actions";
+    const actionRow = document.createElement("div");
+    actionRow.className = "item-actions";
 
+    if (!isMeetingComplete()) {
       const done = document.createElement("button");
       done.type = "button";
       done.className = "discuss-btn" + (item.completed_at ? " done" : "");
@@ -513,13 +513,36 @@ function renderAgendaRow(item, { approved }) {
         skip.addEventListener("click", () => deferItem(item.id));
         actionRow.appendChild(skip);
       }
-
-      body.appendChild(actionRow);
     }
+
+    // Offered whether or not the meeting is closed: most of the work a meeting
+    // creates gets written up afterwards, and the archived agenda is where you
+    // go to remember what you agreed to do.
+    const makeTask = document.createElement("button");
+    makeTask.type = "button";
+    makeTask.className = "make-task-btn";
+    makeTask.textContent = "+ Create task";
+    makeTask.title = "Open the task form, filled in from this agenda item";
+    makeTask.addEventListener("click", () => openTaskModal(taskFromAgendaItem(item)));
+    actionRow.appendChild(makeTask);
+
+    body.appendChild(actionRow);
   }
 
   if (item.completed_at) li.classList.add("item-complete");
   return li;
+}
+
+// Prefills the task form from an agenda item. Only the title and a note
+// saying where it came from — the rest is a judgement call the person creating
+// the task should make, and a wrong guess at a due date is worse than a blank
+// one.
+function taskFromAgendaItem(item) {
+  const from = "From the " + formatMeetingDate(item.meeting_date) + " board meeting.";
+  return {
+    title: item.title,
+    notes: item.description ? `${from}\n\n${item.description}` : from,
+  };
 }
 
 // ---- Completing a meeting ----

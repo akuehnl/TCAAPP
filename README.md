@@ -20,7 +20,7 @@ Two sections, switched from the top of the page:
 | View | Shows |
 | --- | --- |
 | **Today** | Daily overview — every member's work for today on one page, overdue rolled in, with checkboxes to mark done |
-| **Shared board** | Every task, with an Assignee filter (Anyone / Unassigned / any member) |
+| **Shared board** | Every task, with an Assignee filter (Anyone / Unassigned / Shared with everyone / any member) |
 | **My tasks** | Only open tasks assigned to the signed-in member |
 | **Archive** | Completed tasks, grouped by the month they were finished |
 
@@ -29,6 +29,39 @@ entirely** and move to the Archive, so Shared board and My tasks only ever show
 open work. Unchecking a task in the Archive returns it to the board. The list
 views sort by soonest due date (undated last), then priority; overdue tasks are
 outlined in red.
+
+## Tasks assigned to everyone
+
+Setting the assignee to **Everyone** makes a task that every member has to do
+individually — read the handbook, sign the conflict-of-interest form. It is
+**one row**, not a copy per person, which is what keeps the due date linked:
+there is only one due date, so moving it moves the deadline for the whole board
+at once. Copies would need a fan-out update to stay in step and would drift the
+first time one failed.
+
+Who has finished lives in a separate table, one row per person. Ticking your
+own box never touches anyone else's, so:
+
+| Where | A shared task shows until |
+| --- | --- |
+| **My tasks**, **Today**, **Archive** | *you* have ticked it |
+| **Shared board**, tab counts | *everyone* has ticked it |
+
+So it can be open on the board and done in your own archive at the same time —
+that is the point of it. The board row reads **"Everyone — 3 of 5 done"**,
+counted from the rows rather than stored, so the figure cannot drift away from
+the individual ticks. Each person's archive files it under the month *they*
+finished it.
+
+On the Today page a shared task appears on every member's card until they have
+each ticked it, and counts toward each of their daily loads — they each have to
+do the work. You can only tick your own card: the checkbox on someone else's is
+disabled, and the database refuses the write regardless.
+
+"Everyone" and a named assignee are mutually exclusive, enforced by a check
+constraint — otherwise there would be two different answers to whose task it
+is. The **Status** field is disabled on a shared task, since there is no single
+status to set.
 
 ## How the Today page decides what's due
 
@@ -74,7 +107,7 @@ the **five voting board members**, each marked **Present**, **Via Zoom**,
 the room — for a board that meets partly on Zoom, who was physically present is
 worth being able to read back off the minutes — but both count as attending, so
 both count toward the voting-members figure. Anyone else who attends — staff, a parent, a vendor — is
-**written in as a guest**, including other app users such as Elise and Kate.
+**written in as a guest**.
 
 The header counts attendance and states how many of the voting members are
 present. It only splits "in person" from "via Zoom" when somebody actually is
@@ -106,6 +139,14 @@ Below it is a bar of the whole meeting **drawn to scale**: each item's width is
 its share of the planned minutes, discussed items shaded, the current one
 highlighted, and a marker at where the clock has actually reached — so how much
 agenda is left is visible at a glance, not just how long the current item has.
+
+**+ Create task** at the foot of every approved item opens the full task form
+as a popup, prefilled with the item's title and a note saying which meeting it
+came from. It is the same form as the Tasks section — physically moved into the
+popup and moved back on close — so it has every field and cannot drift out of
+step with a second copy. It is offered whether or not the meeting is closed:
+most of the work a meeting creates gets written up afterwards, and the archived
+agenda is where you go to remember what you agreed to do.
 
 **Skip for now** moves an item to the end of the agenda without marking it
 discussed, so the clock advances to the next topic. It stays undiscussed, so
@@ -149,9 +190,10 @@ During the meeting, each approved item carries its own minutes block:
   the wording, who moved and seconded it, and the chair's declared outcome
   (carried / failed / tabled / withdrawn).
 - **Roll call** — every active *voting* member is marked **Aye**, **Nay** or
-  **Abstain**. Staff on the roster (Elise, Kate) do not appear: they are there
-  to be assigned tasks and named on agenda items, not to vote. The same
-  restriction applies to who can move and second a motion. Tallies are counted from those rows rather than stored, so they
+  **Abstain**. Anyone on the roster with `can_vote` false does not appear: the
+  roster can hold people who are assigned tasks and named on agenda items but
+  take no part in motions. The same restriction applies to who can move and
+  second a motion. Tallies are counted from those rows rather than stored, so they
   cannot drift out of step with the individual votes. Members with no vote
   recorded show a dash in the archive.
 - **Mark as discussed** — a full-width button at the foot of each item, below
@@ -239,8 +281,8 @@ its own section, and copying them in would mean two places to change one date.
 | Member | — | Everyone else on the roster | All task work; suggest agenda items and edit their own pending ones |
 | Voting | `can_vote` | The five board members | Appear on the roll call, and may move or second a motion |
 
-Staff (Elise, Kate) are on the roster so they can hold tasks and be named on
-agenda items, but `can_vote` is false, so they never appear on a roll call. An
+Someone can be on the roster to hold tasks and be named on agenda items
+without voting: set `can_vote` false and they never appear on a roll call. An
 admin can change that per person from the People section.
 
 The chair is changed from the **People** section — no code or SQL edit. Because
@@ -290,8 +332,6 @@ whether or not they've created a login yet.
 | Josiah Warner | Board Chair | Limited — decision-making, culture, enrollment, hiring |
 | Ethan Nelson | Secretary | Limited — vendor contracts (signage, security cameras) |
 | Joe Martinez | Board Oversight | Limited — retired; errands, supply runs, church outreach, theology |
-| Elise | Staff — events & curriculum | High — no email on file yet |
-| Kate Rand | Marketing | Limited — no email on file yet |
 
 An account is linked to its roster row automatically at signup by matching
 email address. **Signing up with an address that isn't on the roster gets you
@@ -345,7 +385,8 @@ Run these in the Supabase SQL Editor **in order**, once each:
 14. [`supabase/migration-013-calendar.sql`](supabase/migration-013-calendar.sql) —
     adds the school calendar.
 15. [`supabase/seed-001-initial-task-list.sql`](supabase/seed-001-initial-task-list.sql) —
-    loads the existing 46-task list and adds Elise and Kate to the roster.
+    loads the existing 46-task list. It also added Elise and Kate to the
+    roster; migration 022 later removed them.
 16. [`supabase/migration-014-personnel-category.sql`](supabase/migration-014-personnel-category.sql) —
     adds the `personnel` calendar category.
 17. [`supabase/seed-002-calendar-events.sql`](supabase/seed-002-calendar-events.sql) —
@@ -365,7 +406,11 @@ Run these in the Supabase SQL Editor **in order**, once each:
 24. [`supabase/migration-021-carry-suggestions-forward.sql`](supabase/migration-021-carry-suggestions-forward.sql) —
     lands carried suggestions on the next meeting still ahead, and rescues any
     already stranded on a past date.
-25. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
+25. [`supabase/migration-022-remove-staff-roster.sql`](supabase/migration-022-remove-staff-roster.sql) —
+    takes Elise and Kate off the roster and reports which tasks that frees up.
+26. [`supabase/migration-023-shared-tasks.sql`](supabase/migration-023-shared-tasks.sql) —
+    adds tasks assigned to everyone, each person ticking their own box.
+27. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
     loads the recorded staff absences.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key

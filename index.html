@@ -80,12 +80,17 @@
           <select id="assignee-filter">
             <option value="">Anyone</option>
             <option value="unassigned">Unassigned</option>
+            <option value="all">Shared with everyone</option>
           </select>
         </label>
       </div>
     </div>
 
-    <!-- Create / edit form -->
+    <!-- Create / edit form. Lives here inline, but is physically moved into
+         #task-modal when opened from a board meeting agenda item and moved
+         back on close, so there is only ever one form with one set of
+         options and one set of listeners. -->
+    <div id="task-form-host"></div>
     <form id="task-form" class="task-form hidden">
       <h2 id="form-heading">New task</h2>
 
@@ -98,6 +103,7 @@
         <label for="f-assignee">Assignee</label>
         <select id="f-assignee">
           <option value="">Unassigned</option>
+          <option value="all">Everyone — each person ticks it off</option>
         </select>
       </div>
 
@@ -115,7 +121,7 @@
         </select>
       </div>
 
-      <div class="field">
+      <div class="field" id="status-field">
         <label for="f-status">Status</label>
         <select id="f-status">
           <option value="open" selected>Open</option>
@@ -441,6 +447,11 @@
 
     </div><!-- /#calendar-section -->
   </section>
+
+  <!-- Host for the task form when it is opened from an agenda item. -->
+  <div id="task-modal" class="modal hidden">
+    <div class="modal-card" id="task-modal-card"></div>
+  </div>
 
   <p id="loading" class="message">Loading…</p>
 

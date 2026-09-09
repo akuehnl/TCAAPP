@@ -1360,6 +1360,55 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 .skip-btn:hover { background: #fff2d9; border-color: #b8860b; color: #8a5a00; }
 
+.make-task-btn {
+  flex-shrink: 0;
+  padding: 11px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--muted);
+  border: 1.5px solid var(--border);
+}
+
+.make-task-btn:hover { background: #e8f0fe; border-color: #10529c; color: #10529c; }
+
+/* On a closed meeting this is the only button in the row, so let it fill the
+   width rather than sit as a stub against the left edge. */
+.item-actions .make-task-btn:only-child { flex: 1; }
+
+/* ---- The task form as a popup ---- */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+  background: rgba(20, 22, 28, 0.45);
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 640px;
+  margin: auto;
+}
+
+/* The form is normally a block inside the page; inside the card it needs to
+   carry its own surface, since there is no page behind it any more. */
+.modal-card .task-form {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+  max-height: none;
+}
+
+.disabled-field { opacity: 0.55; }
+
 /* ---- Clock progress bar ---- */
 
 .meeting-clock.agenda-item,

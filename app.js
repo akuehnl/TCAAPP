@@ -56,6 +56,10 @@ const fAssignee = $("f-assignee");
 const fDueDate = $("f-due-date");
 const fPriority = $("f-priority");
 const fStatus = $("f-status");
+const statusField = $("status-field");
+const taskFormHost = $("task-form-host");
+const taskModal = $("task-modal");
+const taskModalCard = $("task-modal-card");
 const fWorkHours = $("f-work-hours");
 const fCalendarDays = $("f-calendar-days");
 const fProjectLabel = $("f-project-label");
@@ -150,8 +154,51 @@ function formatDueDate(str) {
   return date.toLocaleDateString(undefined, opts);
 }
 
-function isOverdue(task) {
-  if (task.is_complete || !task.due_date) return false;
+// ---- Shared tasks ----
+//
+// A task assigned to everyone is a single row, so there is only one due date
+// and editing it moves the deadline for the whole board at once. Who has
+// finished lives in `todo_completions`, one row per person, so ticking your
+// own box never touches anyone else's.
+//
+// `todos.is_complete` still means "finished" for an ordinary task. On a shared
+// task it is ignored — being done is per-person, and whether the board as a
+// whole is finished is counted from the completion rows.
+
+// todo_id -> Map(member_id -> completed_at)
+let completions = new Map();
+const EMPTY_COMPLETIONS = new Map();
+
+function completionsFor(task) {
+  return completions.get(task.id) ?? EMPTY_COMPLETIONS;
+}
+
+// Done as far as one particular person is concerned. Defaults to the signed-in
+// member, but the Today page asks per member card — a shared task I have
+// finished is still outstanding on everybody else's page.
+function isDoneFor(task, memberId = currentMember?.id ?? null) {
+  if (!task.assign_to_all) return task.is_complete;
+  return memberId ? completionsFor(task).has(memberId) : false;
+}
+
+// Counted, never stored, so it cannot drift away from the individual ticks.
+// Only active members count: someone taken off the roster should not hold a
+// shared task open forever.
+function doneCount(task) {
+  const done = completionsFor(task);
+  return members.filter((m) => done.has(m.id)).length;
+}
+
+// Finished as far as the board is concerned: everyone has ticked it. This is
+// what retires a shared task from the Shared board, whereas each person's own
+// list uses isDoneFor().
+function isDoneForBoard(task) {
+  if (!task.assign_to_all) return task.is_complete;
+  return members.length > 0 && doneCount(task) >= members.length;
+}
+
+function isOverdue(task, memberId) {
+  if (isDoneFor(task, memberId) || !task.due_date) return false;
   return parseDateOnly(task.due_date) < todayAtMidnight();
 }
 
@@ -198,10 +245,10 @@ function dailyLoad(task) {
 
 // Which section of the Today page a task belongs in, or null if it isn't
 // today's problem yet.
-function todayBucket(task) {
-  if (task.is_complete) return null;
+function todayBucket(task, memberId) {
+  if (isDoneFor(task, memberId)) return null;
   if (!task.due_date) return "undated";
-  if (isOverdue(task)) return "overdue";
+  if (isOverdue(task, memberId)) return "overdue";
   return startByDate(task) <= todayAtMidnight() ? "active" : null;
 }
 
@@ -331,6 +378,9 @@ function renderZoomLink() {
 const SECTIONS = ["tasks", "meetings", "calendar", "people"];
 
 function setSection(name) {
+  // A popup opened from an agenda item would otherwise hang over whatever you
+  // navigated to.
+  if (!taskModal.classList.contains("hidden")) closeForm();
   currentSection = name;
   for (const section of SECTIONS) {
     $("section-" + section).classList.toggle("active", section === name);
@@ -374,14 +424,23 @@ assigneeFilter.addEventListener("change", render);
 
 // Completed work lives in the Archive, so the active board never shows it.
 function visibleTasks() {
-  let list = tasks.filter((t) => !t.is_complete);
+  // My tasks retires a shared task as soon as I have done my part; the Shared
+  // board keeps it until everyone has, since it is still outstanding work.
+  let list = currentView === "mine"
+    ? tasks.filter((t) => !isDoneFor(t))
+    : tasks.filter((t) => !isDoneForBoard(t));
 
   if (currentView === "mine") {
-    list = list.filter((t) => currentMember && t.assignee_id === currentMember.id);
+    list = list.filter((t) =>
+      currentMember && (t.assign_to_all || t.assignee_id === currentMember.id));
   } else if (assigneeFilter.value === "unassigned") {
-    list = list.filter((t) => !t.assignee_id);
+    list = list.filter((t) => !t.assignee_id && !t.assign_to_all);
+  } else if (assigneeFilter.value === "all") {
+    list = list.filter((t) => t.assign_to_all);
   } else if (assigneeFilter.value) {
-    list = list.filter((t) => t.assignee_id === assigneeFilter.value);
+    // A shared task is genuinely one of this person's, so filtering by name
+    // has to show it — otherwise their filtered list understates their work.
+    list = list.filter((t) => t.assignee_id === assigneeFilter.value || t.assign_to_all);
   }
 
   return list;
@@ -398,7 +457,7 @@ function openForm(task) {
   fTitle.value = task?.title ?? "";
   // A new task in "My tasks" defaults to me — that's the common case there.
   fAssignee.value = task
-    ? (task.assignee_id ?? "")
+    ? (task.assign_to_all ? "all" : (task.assignee_id ?? ""))
     : (currentView === "mine" && currentMember ? currentMember.id : "");
   fDueDate.value = task?.due_date ?? "";
   fPriority.value = task?.priority ?? "medium";
@@ -408,16 +467,69 @@ function openForm(task) {
   fProjectLabel.value = task?.project_label ?? "";
   fNotes.value = task?.notes ?? "";
 
+  syncStatusField();
   taskForm.classList.remove("hidden");
   fTitle.focus();
 }
+
+// On a shared task there is no single status to set — five people each have
+// their own — so the field is disabled rather than left offering a choice that
+// would be quietly ignored on save.
+function syncStatusField() {
+  const toAll = fAssignee.value === "all";
+  fStatus.disabled = toAll;
+  statusField.classList.toggle("disabled-field", toAll);
+  statusField.title = toAll ? "Each person ticks a shared task off for themselves" : "";
+  if (toAll) fStatus.value = "open";
+}
+
+fAssignee.addEventListener("change", syncStatusField);
 
 function closeForm() {
   editingId = null;
   taskForm.reset();
   taskForm.classList.add("hidden");
   setMessage(formMessage, "");
+  closeTaskModal();
 }
+
+// ---- The task form as a popup ----
+//
+// Called from a board meeting agenda item. Rather than building a second form
+// that would drift out of step with this one, the real form is moved into the
+// overlay and moved back on close: same fields, same validation, same submit
+// handler, nothing duplicated.
+
+function openTaskModal(prefill = {}) {
+  openForm(null);
+  if (prefill.title) fTitle.value = prefill.title;
+  if (prefill.notes) fNotes.value = prefill.notes;
+  if (prefill.dueDate) fDueDate.value = prefill.dueDate;
+
+  taskModalCard.appendChild(taskForm);
+  taskModal.classList.remove("hidden");
+  formHeading.textContent = "New task";
+  fTitle.focus();
+  fTitle.select();
+}
+
+function closeTaskModal() {
+  if (taskModal.classList.contains("hidden")) return;
+  taskModal.classList.add("hidden");
+  // Back where it came from, so "+ New task" on the Tasks page still shows it
+  // inline the way it always has.
+  taskFormHost.appendChild(taskForm);
+}
+
+// Clicking the backdrop closes, the same as Cancel. Clicks inside the card
+// must not, or every click on a field would shut the form.
+taskModal.addEventListener("click", (e) => {
+  if (e.target === taskModal) closeForm();
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !taskModal.classList.contains("hidden")) closeForm();
+});
 
 // Empty inputs should be stored as NULL, not "" or 0.
 function textOrNull(input) {
@@ -433,12 +545,18 @@ function numberOrNull(input) {
 }
 
 function readForm() {
+  const assignee = fAssignee.value;
+  const toAll = assignee === "all";
   return {
     title: fTitle.value.trim(),
-    assignee_id: fAssignee.value || null,
+    // Mutually exclusive, and the database enforces that too.
+    assignee_id: toAll ? null : (assignee || null),
+    assign_to_all: toAll,
     due_date: fDueDate.value || null,
     priority: fPriority.value,
-    is_complete: fStatus.value === "done",
+    // Meaningless on a shared task — each person has their own tick — so it is
+    // pinned false rather than left to say something it cannot know.
+    is_complete: toAll ? false : fStatus.value === "done",
     est_work_hours: numberOrNull(fWorkHours),
     est_calendar_days: numberOrNull(fCalendarDays),
     project_label: textOrNull(fProjectLabel),
@@ -513,8 +631,8 @@ function populateMemberSelects() {
   const keepAssignee = fAssignee.value;
   const keepFilter = assigneeFilter.value;
 
-  fAssignee.length = 1;                 // keep "Unassigned"
-  assigneeFilter.length = 2;            // keep "Anyone" and "Unassigned"
+  fAssignee.length = 2;                 // keep "Unassigned" and "Everyone"
+  assigneeFilter.length = 3;            // keep "Anyone", "Unassigned", "Everyone"
 
   for (const member of members) {
     fAssignee.appendChild(memberOption(member));
@@ -536,8 +654,22 @@ async function loadTasks() {
     return;
   }
   tasks = data;
+  await loadCompletions();
   render();
   refreshLabelOptions();
+}
+
+async function loadCompletions() {
+  const { data, error } = await supabaseClient.from("todo_completions").select("*");
+  if (error) {
+    console.error(error);
+    return;
+  }
+  completions = new Map();
+  for (const row of data) {
+    if (!completions.has(row.todo_id)) completions.set(row.todo_id, new Map());
+    completions.get(row.todo_id).set(row.member_id, row.completed_at);
+  }
 }
 
 async function createTask(payload) {
@@ -555,11 +687,33 @@ async function updateTask(id, payload) {
   return error;
 }
 
-async function toggleStatus(id, isComplete) {
+async function toggleStatus(task, isComplete) {
+  if (task.assign_to_all) return toggleMyCompletion(task, isComplete);
+
   const { error } = await supabaseClient
     .from("todos")
     .update({ is_complete: isComplete })
-    .eq("id", id);
+    .eq("id", task.id);
+  if (error) console.error(error);
+  else await loadTasks();
+}
+
+// Ticking a shared task adds or removes only my own row, so nobody else's
+// progress moves.
+async function toggleMyCompletion(task, isComplete) {
+  if (!currentMember) return;
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return;
+
+  const { error } = isComplete
+    ? await supabaseClient.from("todo_completions").upsert({
+        todo_id: task.id,
+        member_id: currentMember.id,
+        user_id: user.id,
+      }, { onConflict: "todo_id,member_id" })
+    : await supabaseClient.from("todo_completions").delete()
+        .eq("todo_id", task.id).eq("member_id", currentMember.id);
+
   if (error) console.error(error);
   else await loadTasks();
 }
@@ -594,7 +748,9 @@ function compareByDueDate(a, b) {
 // Open tasks first, then soonest due date (undated last), then priority.
 function sortTasks(list) {
   return [...list].sort((a, b) => {
-    if (a.is_complete !== b.is_complete) return a.is_complete ? 1 : -1;
+    const aDone = isDoneFor(a);
+    const bDone = isDoneFor(b);
+    if (aDone !== bDone) return aDone ? 1 : -1;
     return compareByDueDate(a, b);
   });
 }
@@ -602,15 +758,23 @@ function sortTasks(list) {
 function buildMetaLine(task) {
   const parts = [];
 
-  // In "My tasks" every row is mine, so the name would just be noise.
-  if (currentView !== "mine") {
-    const member = task.assignee_id ? membersById.get(task.assignee_id) : null;
-    parts.push(member ? member.name : "Unassigned");
+  // In "My tasks" every row is mine, so the name would just be noise — but a
+  // shared task still says so, because "everyone has this" changes how you
+  // read it.
+  if (currentView !== "mine" || task.assign_to_all) {
+    if (task.assign_to_all) {
+      parts.push(`Everyone — ${doneCount(task)} of ${members.length} done`);
+    } else {
+      const member = task.assignee_id ? membersById.get(task.assignee_id) : null;
+      parts.push(member ? member.name : "Unassigned");
+    }
   }
 
   // In the Archive, when it was finished matters more than when it was due.
-  if (task.is_complete) {
-    const stamp = task.completed_at || task.updated_at;
+  if (isDoneFor(task)) {
+    const stamp = task.assign_to_all
+      ? completionsFor(task).get(currentMember?.id)
+      : (task.completed_at || task.updated_at);
     if (stamp) parts.push("Completed " + formatDueDate(String(stamp).slice(0, 10)));
   } else if (task.due_date) {
     parts.push((isOverdue(task) ? "Overdue — due " : "Due ") + formatDueDate(task.due_date));
@@ -627,14 +791,17 @@ function buildMetaLine(task) {
 function renderTask(task) {
   const li = document.createElement("li");
   li.className = "task-item";
-  if (task.is_complete) li.classList.add("complete");
+  const mineDone = isDoneFor(task);
+  if (mineDone) li.classList.add("complete");
   if (isOverdue(task)) li.classList.add("overdue");
 
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
-  checkbox.checked = task.is_complete;
-  checkbox.title = task.is_complete ? "Mark open" : "Mark done";
-  checkbox.addEventListener("change", () => toggleStatus(task.id, checkbox.checked));
+  checkbox.checked = mineDone;
+  checkbox.title = task.assign_to_all
+    ? (mineDone ? "Mark open for you" : "Mark done for you — others keep theirs")
+    : (mineDone ? "Mark open" : "Mark done");
+  checkbox.addEventListener("change", () => toggleStatus(task, checkbox.checked));
 
   const body = document.createElement("div");
   body.className = "task-body";
@@ -698,13 +865,20 @@ function renderTask(task) {
 }
 
 function updateTabCounts() {
-  const open = tasks.filter((t) => !t.is_complete);
-  const done = tasks.filter((t) => t.is_complete);
+  // The board tabs count what the board still owes; My tasks and the Archive
+  // count what I still owe, so a shared task can be open on one and done on
+  // the other at the same time. That is the point of it.
+  const open = tasks.filter((t) => !isDoneForBoard(t));
+  const done = tasks.filter((t) => isDoneFor(t));
   const mine = currentMember
-    ? open.filter((t) => t.assignee_id === currentMember.id)
+    ? tasks.filter((t) =>
+        !isDoneFor(t) && (t.assign_to_all || t.assignee_id === currentMember.id))
     : [];
+  // The Today page shows every member's card, so this counts work outstanding
+  // for anyone. Passing null asks "is this still live for somebody?" — a
+  // shared task I have finished is still on four other people's pages.
   const todayCount = open.filter((t) => {
-    const bucket = todayBucket(t);
+    const bucket = todayBucket(t, null);
     return bucket === "overdue" || bucket === "active";
   }).length;
 
@@ -719,7 +893,11 @@ function updateTabCounts() {
 // Group key like "2026-08"; completion date can be missing on rows that
 // predate migration 004, so fall back to when the row was created.
 function archiveMonthKey(task) {
-  const stamp = task.completed_at || task.updated_at || task.inserted_at;
+  // A shared task is filed under the month *you* finished it, so two people
+  // who did it weeks apart each see it where they left it.
+  const stamp = task.assign_to_all
+    ? completionsFor(task).get(currentMember?.id) || task.inserted_at
+    : (task.completed_at || task.updated_at || task.inserted_at);
   return stamp ? String(stamp).slice(0, 7) : "unknown";
 }
 
@@ -732,7 +910,9 @@ function formatMonthKey(key) {
 }
 
 function renderArchive() {
-  const done = tasks.filter((t) => t.is_complete);
+  // Your archive, not the board's: a shared task lands here once you have done
+  // your part, whether or not everyone else has.
+  const done = tasks.filter((t) => isDoneFor(t));
 
   archiveGroups.innerHTML = "";
   archiveEmpty.classList.toggle("hidden", done.length > 0);
@@ -774,15 +954,24 @@ function renderArchive() {
 // ---- Today view ----
 
 // Compact row: checkbox, title, why-it's-here line.
-function renderTodayRow(task, bucket) {
+function renderTodayRow(task, bucket, memberId) {
   const li = document.createElement("li");
   li.className = "today-task" + (bucket === "overdue" ? " overdue" : "");
 
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
   checkbox.checked = false;
-  checkbox.title = "Mark done";
-  checkbox.addEventListener("change", () => toggleStatus(task.id, checkbox.checked));
+
+  // On a shared task the tick is personal, so it can only be your own card you
+  // tick it on. Ticking from someone else's would silently mark it done for
+  // you instead of for them — and the database refuses it anyway.
+  const someoneElse = task.assign_to_all
+    && (!currentMember || memberId !== currentMember.id);
+  checkbox.disabled = someoneElse;
+  checkbox.title = someoneElse
+    ? "Only " + (membersById.get(memberId)?.name ?? "they") + " can tick this off"
+    : "Mark done";
+  checkbox.addEventListener("change", () => toggleStatus(task, checkbox.checked));
 
   const body = document.createElement("div");
   body.className = "today-task-body";
@@ -823,7 +1012,7 @@ function renderTodayRow(task, bucket) {
   return li;
 }
 
-function renderTodaySection(heading, list, modifier) {
+function renderTodaySection(heading, list, modifier, memberId) {
   if (!list.length) return null;
 
   const wrap = document.createElement("div");
@@ -835,7 +1024,7 @@ function renderTodaySection(heading, list, modifier) {
   wrap.appendChild(title);
 
   const ul = document.createElement("ul");
-  for (const { task, bucket } of list) ul.appendChild(renderTodayRow(task, bucket));
+  for (const { task, bucket } of list) ul.appendChild(renderTodayRow(task, bucket, memberId));
   wrap.appendChild(ul);
 
   return wrap;
@@ -844,7 +1033,9 @@ function renderTodaySection(heading, list, modifier) {
 function renderMemberCard(member, assigned) {
   const buckets = { overdue: [], active: [], undated: [] };
   for (const task of assigned) {
-    const bucket = todayBucket(task);
+    // Bucketed against this member, not the viewer: a shared task I ticked off
+    // this morning is still overdue on everyone else's card.
+    const bucket = todayBucket(task, member.id ?? null);
     if (bucket) buckets[bucket].push({ task, bucket });
   }
 
@@ -900,9 +1091,9 @@ function renderMemberCard(member, assigned) {
   }
 
   const sections = [
-    renderTodaySection("Overdue", buckets.overdue, "danger"),
-    renderTodaySection("Needs work today", buckets.active, ""),
-    renderTodaySection("No due date", buckets.undated, "muted"),
+    renderTodaySection("Overdue", buckets.overdue, "danger", member.id ?? null),
+    renderTodaySection("Needs work today", buckets.active, "", member.id ?? null),
+    renderTodaySection("No due date", buckets.undated, "muted", member.id ?? null),
   ].filter(Boolean);
 
   if (sections.length) {
@@ -925,12 +1116,16 @@ function renderToday() {
   todayMembersEl.innerHTML = "";
 
   for (const member of members) {
-    const assigned = tasks.filter((t) => t.assignee_id === member.id);
+    // A shared task is on everybody's card until they have each ticked it, so
+    // it counts toward every person's day — they each have to do it.
+    const assigned = tasks.filter((t) =>
+      t.assignee_id === member.id || (t.assign_to_all && !isDoneFor(t, member.id)));
     todayMembersEl.appendChild(renderMemberCard(member, assigned));
   }
 
   // Unassigned work would otherwise be invisible on this page.
-  const orphans = tasks.filter((t) => !t.assignee_id && todayBucket(t));
+  const orphans = tasks.filter((t) =>
+    !t.assignee_id && !t.assign_to_all && todayBucket(t));
   if (orphans.length) {
     todayMembersEl.appendChild(
       renderMemberCard({ name: "Unassigned", role: null, daily_capacity_hours: 0 }, orphans)
@@ -984,6 +1179,9 @@ function subscribeToTasks() {
   realtimeChannel = supabaseClient
     .channel("board-changes")
     .on("postgres_changes", { event: "*", schema: "public", table: "todos" }, () => loadTasks())
+    // Someone else ticking their box on a shared task changes the "3 of 5
+    // done" line on everybody's screen.
+    .on("postgres_changes", { event: "*", schema: "public", table: "todo_completions" }, () => loadTasks())
     .on("postgres_changes", { event: "*", schema: "public", table: "members" }, () => loadMembers())
     .subscribe();
 }
@@ -1060,6 +1258,7 @@ function exitApp() {
     realtimeChannel = null;
   }
   tasks = [];
+  completions = new Map();
   members = [];
   membersById = new Map();
   currentMember = null;
