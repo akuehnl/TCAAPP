@@ -453,6 +453,16 @@
     <div class="modal-card" id="task-modal-card"></div>
   </div>
 
+  <!-- Delete confirmation. A shared task needs three answers, not the two a
+       browser confirm() can give. -->
+  <div id="confirm-modal" class="modal hidden">
+    <div class="modal-card confirm-card">
+      <h2 id="confirm-title">Delete this task?</h2>
+      <p id="confirm-body" class="confirm-body"></p>
+      <div class="confirm-actions" id="confirm-actions"></div>
+    </div>
+  </div>
+
   <p id="loading" class="message">Loading…</p>
 
 </div>

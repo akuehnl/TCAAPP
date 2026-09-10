@@ -19,7 +19,7 @@ Two sections, switched from the top of the page:
 
 | View | Shows |
 | --- | --- |
-| **Today** | Daily overview — every member's work for today on one page, overdue rolled in, with checkboxes to mark done |
+| **Today** | Daily overview — every member's work for today on one page, overdue rolled in, with checkboxes to mark done and Edit / delete on each row |
 | **Shared board** | Every task, with an Assignee filter (Anyone / Unassigned / Shared with everyone / any member) |
 | **My tasks** | Only open tasks assigned to the signed-in member |
 | **Archive** | Completed tasks, grouped by the month they were finished |
@@ -62,6 +62,26 @@ disabled, and the database refuses the write regardless.
 constraint — otherwise there would be two different answers to whose task it
 is. The **Status** field is disabled on a shared task, since there is no single
 status to set.
+
+## Deleting a task
+
+Every delete asks first, from any view. An ordinary task is deleted for
+everyone — it is one row and there is nothing else it could mean.
+
+A shared task offers two answers, because there are genuinely two:
+
+- **Remove from my list** — takes it off your board and leaves everyone else's
+  alone. Recorded as a `removed` row alongside the `done` ones, so it counts
+  toward nobody being owed the task, but it is **not** filed in your Archive:
+  you did not do it. The board line reads "1 of 3 done, 1 removed".
+- **Delete for everyone** — deletes the row itself. Gone for the whole board.
+
+Ticking a task you had dropped converts your row back to `done`, so changing
+your mind costs nothing.
+
+On the Today page you can only drop a task from **your own card**. On someone
+else's the option is not offered, and the database would refuse it anyway —
+their row is theirs to settle.
 
 ## How the Today page decides what's due
 
@@ -410,7 +430,9 @@ Run these in the Supabase SQL Editor **in order**, once each:
     takes Elise and Kate off the roster and reports which tasks that frees up.
 26. [`supabase/migration-023-shared-tasks.sql`](supabase/migration-023-shared-tasks.sql) —
     adds tasks assigned to everyone, each person ticking their own box.
-27. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
+27. [`supabase/migration-024-remove-shared-task-for-one.sql`](supabase/migration-024-remove-shared-task-for-one.sql) —
+    lets one person drop off a shared task without deleting it for the board.
+28. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
     loads the recorded staff absences.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key

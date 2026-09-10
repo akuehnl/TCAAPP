@@ -60,6 +60,10 @@ const statusField = $("status-field");
 const taskFormHost = $("task-form-host");
 const taskModal = $("task-modal");
 const taskModalCard = $("task-modal-card");
+const confirmModal = $("confirm-modal");
+const confirmTitle = $("confirm-title");
+const confirmBody = $("confirm-body");
+const confirmActions = $("confirm-actions");
 const fWorkHours = $("f-work-hours");
 const fCalendarDays = $("f-calendar-days");
 const fProjectLabel = $("f-project-label");
@@ -165,7 +169,12 @@ function formatDueDate(str) {
 // task it is ignored — being done is per-person, and whether the board as a
 // whole is finished is counted from the completion rows.
 
-// todo_id -> Map(member_id -> completed_at)
+// todo_id -> Map(member_id -> { state, completed_at })
+//
+// A row means the shared task is settled for that person, either because they
+// finished it ("done") or because it does not apply to them ("removed"). Both
+// take it off their board; only "done" is an achievement, so only "done"
+// reaches their Archive or counts toward the progress line.
 let completions = new Map();
 const EMPTY_COMPLETIONS = new Map();
 
@@ -173,32 +182,47 @@ function completionsFor(task) {
   return completions.get(task.id) ?? EMPTY_COMPLETIONS;
 }
 
-// Done as far as one particular person is concerned. Defaults to the signed-in
+function settlementFor(task, memberId) {
+  return memberId ? completionsFor(task).get(memberId) ?? null : null;
+}
+
+// Off this person's board, for either reason. Defaults to the signed-in
 // member, but the Today page asks per member card — a shared task I have
 // finished is still outstanding on everybody else's page.
+function isSettledFor(task, memberId = currentMember?.id ?? null) {
+  if (!task.assign_to_all) return task.is_complete;
+  return settlementFor(task, memberId) !== null;
+}
+
+// Finished, as opposed to merely off the list. This is what the Archive shows,
+// so a task you dropped does not turn up filed as work you completed.
 function isDoneFor(task, memberId = currentMember?.id ?? null) {
   if (!task.assign_to_all) return task.is_complete;
-  return memberId ? completionsFor(task).has(memberId) : false;
+  return settlementFor(task, memberId)?.state === "done";
 }
 
 // Counted, never stored, so it cannot drift away from the individual ticks.
 // Only active members count: someone taken off the roster should not hold a
 // shared task open forever.
 function doneCount(task) {
-  const done = completionsFor(task);
-  return members.filter((m) => done.has(m.id)).length;
+  return members.filter((m) => isDoneFor(task, m.id)).length;
 }
 
-// Finished as far as the board is concerned: everyone has ticked it. This is
-// what retires a shared task from the Shared board, whereas each person's own
-// list uses isDoneFor().
+function removedCount(task) {
+  return members.filter((m) => settlementFor(task, m.id)?.state === "removed").length;
+}
+
+// Settled as far as the board is concerned: nobody is still owed it. Someone
+// who dropped the task counts as settled — they are never going to tick it, so
+// waiting on them would strand the task on the board forever.
 function isDoneForBoard(task) {
   if (!task.assign_to_all) return task.is_complete;
-  return members.length > 0 && doneCount(task) >= members.length;
+  const settled = members.filter((m) => isSettledFor(task, m.id)).length;
+  return members.length > 0 && settled >= members.length;
 }
 
 function isOverdue(task, memberId) {
-  if (isDoneFor(task, memberId) || !task.due_date) return false;
+  if (isSettledFor(task, memberId) || !task.due_date) return false;
   return parseDateOnly(task.due_date) < todayAtMidnight();
 }
 
@@ -246,7 +270,7 @@ function dailyLoad(task) {
 // Which section of the Today page a task belongs in, or null if it isn't
 // today's problem yet.
 function todayBucket(task, memberId) {
-  if (isDoneFor(task, memberId)) return null;
+  if (isSettledFor(task, memberId)) return null;
   if (!task.due_date) return "undated";
   if (isOverdue(task, memberId)) return "overdue";
   return startByDate(task) <= todayAtMidnight() ? "active" : null;
@@ -427,7 +451,7 @@ function visibleTasks() {
   // My tasks retires a shared task as soon as I have done my part; the Shared
   // board keeps it until everyone has, since it is still outstanding work.
   let list = currentView === "mine"
-    ? tasks.filter((t) => !isDoneFor(t))
+    ? tasks.filter((t) => !isSettledFor(t))
     : tasks.filter((t) => !isDoneForBoard(t));
 
   if (currentView === "mine") {
@@ -670,7 +694,11 @@ async function loadCompletions() {
   completions = new Map();
   for (const row of data) {
     if (!completions.has(row.todo_id)) completions.set(row.todo_id, new Map());
-    completions.get(row.todo_id).set(row.member_id, row.completed_at);
+    completions.get(row.todo_id).set(row.member_id, {
+      // Rows written before migration 024 have no state; they were all ticks.
+      state: row.state ?? "done",
+      completed_at: row.completed_at,
+    });
   }
 }
 
@@ -712,6 +740,9 @@ async function toggleMyCompletion(task, isComplete) {
         todo_id: task.id,
         member_id: currentMember.id,
         user_id: user.id,
+        // Explicit, so ticking a task you had dropped converts your row rather
+        // than leaving it marked removed.
+        state: "done",
       }, { onConflict: "todo_id,member_id" })
     : await supabaseClient.from("todo_completions").delete()
         .eq("todo_id", task.id).eq("member_id", currentMember.id);
@@ -720,14 +751,97 @@ async function toggleMyCompletion(task, isComplete) {
   else await loadTasks();
 }
 
-async function deleteTask(id) {
-  const { error } = await supabaseClient.from("todos").delete().eq("id", id);
+// `canRemoveForMe` is false where the row on screen stands for somebody else —
+// another member's card on the Today page. You cannot drop a shared task on
+// their behalf, and the database would refuse the write anyway.
+async function deleteTask(task, { canRemoveForMe = true } = {}) {
+  const choice = await askDelete(task, canRemoveForMe);
+  if (!choice) return;
+  if (choice === "me") return removeSharedForMe(task);
+
+  const { error } = await supabaseClient.from("todos").delete().eq("id", task.id);
   if (error) console.error(error);
   else {
-    if (editingId === id) closeForm();
+    if (editingId === task.id) closeForm();
     await loadTasks();
   }
 }
+
+// Takes a shared task off your own board without touching the row, so nobody
+// else's copy moves.
+async function removeSharedForMe(task) {
+  if (!currentMember) return;
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return;
+
+  const { error } = await supabaseClient.from("todo_completions").upsert({
+    todo_id: task.id,
+    member_id: currentMember.id,
+    user_id: user.id,
+    state: "removed",
+  }, { onConflict: "todo_id,member_id" });
+
+  if (error) console.error(error);
+  else await loadTasks();
+}
+
+// ---- Delete confirmation ----
+//
+// Resolves to "all" (delete the row), "me" (drop it from my board only) or
+// null (cancelled). A shared task has three answers, which is one more than a
+// browser confirm() can offer.
+
+let confirmResolve = null;
+
+function askDelete(task, canRemoveForMe) {
+  const shared = Boolean(task.assign_to_all);
+  confirmTitle.textContent = shared ? "Delete this shared task?" : "Delete this task?";
+
+  if (!shared) {
+    confirmBody.textContent = `"${task.title}" will be removed for everyone. This cannot be undone.`;
+  } else if (canRemoveForMe) {
+    confirmBody.textContent =
+      `"${task.title}" is assigned to everyone. You can take it off your own list `
+      + `and leave it on everyone else's, or delete it for the whole board.`;
+  } else {
+    confirmBody.textContent =
+      `"${task.title}" is assigned to everyone. Only they can take it off their own `
+      + `list, so the choice here is to delete it for the whole board or leave it be.`;
+  }
+
+  const buttons = [];
+  if (shared && canRemoveForMe) buttons.push(["Remove from my list", "me", "secondary"]);
+  buttons.push([shared ? "Delete for everyone" : "Delete", "all", "danger-btn"]);
+  buttons.push(["Cancel", null, "secondary"]);
+
+  confirmActions.innerHTML = "";
+  for (const [label, value, className] of buttons) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = className;
+    btn.textContent = label;
+    btn.addEventListener("click", () => settleConfirm(value));
+    confirmActions.appendChild(btn);
+  }
+
+  confirmModal.classList.remove("hidden");
+  return new Promise((resolve) => { confirmResolve = resolve; });
+}
+
+function settleConfirm(value) {
+  confirmModal.classList.add("hidden");
+  const resolve = confirmResolve;
+  confirmResolve = null;
+  if (resolve) resolve(value);
+}
+
+confirmModal.addEventListener("click", (e) => {
+  if (e.target === confirmModal) settleConfirm(null);
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !confirmModal.classList.contains("hidden")) settleConfirm(null);
+});
 
 // ---- Rendering ----
 
@@ -750,8 +864,8 @@ function compareByDueDate(a, b) {
 // Open tasks first, then soonest due date (undated last), then priority.
 function sortTasks(list) {
   return [...list].sort((a, b) => {
-    const aDone = isDoneFor(a);
-    const bDone = isDoneFor(b);
+    const aDone = isSettledFor(a);
+    const bDone = isSettledFor(b);
     if (aDone !== bDone) return aDone ? 1 : -1;
     return compareByDueDate(a, b);
   });
@@ -765,7 +879,14 @@ function buildMetaLine(task) {
   // read it.
   if (currentView !== "mine" || task.assign_to_all) {
     if (task.assign_to_all) {
-      parts.push(`Everyone — ${doneCount(task)} of ${members.length} done`);
+      const dropped = removedCount(task);
+      let line = `Everyone — ${doneCount(task)} of ${members.length} done`;
+      if (dropped) line += `, ${dropped} removed`;
+      parts.push(line);
+      // Otherwise a task you dropped looks identical to one you still owe.
+      if (settlementFor(task, currentMember?.id)?.state === "removed") {
+        parts.push("Removed from your list");
+      }
     } else {
       const member = task.assignee_id ? membersById.get(task.assignee_id) : null;
       parts.push(member ? member.name : "Unassigned");
@@ -775,7 +896,7 @@ function buildMetaLine(task) {
   // In the Archive, when it was finished matters more than when it was due.
   if (isDoneFor(task)) {
     const stamp = task.assign_to_all
-      ? completionsFor(task).get(currentMember?.id)
+      ? settlementFor(task, currentMember?.id)?.completed_at
       : (task.completed_at || task.updated_at);
     if (stamp) parts.push("Completed " + formatDueDate(String(stamp).slice(0, 10)));
   } else if (task.due_date) {
@@ -859,7 +980,7 @@ function renderTask(task) {
   deleteBtn.className = "icon-btn delete-btn";
   deleteBtn.textContent = "✕";
   deleteBtn.title = "Delete task";
-  deleteBtn.addEventListener("click", () => deleteTask(task.id));
+  deleteBtn.addEventListener("click", () => deleteTask(task));
 
   actions.append(editBtn, deleteBtn);
   li.append(checkbox, body, actions);
@@ -874,7 +995,7 @@ function updateTabCounts() {
   const done = tasks.filter((t) => isDoneFor(t));
   const mine = currentMember
     ? tasks.filter((t) =>
-        !isDoneFor(t) && (t.assign_to_all || t.assignee_id === currentMember.id))
+        !isSettledFor(t) && (t.assign_to_all || t.assignee_id === currentMember.id))
     : [];
   // The Today page shows every member's card, so this counts work outstanding
   // for anyone. Passing null asks "is this still live for somebody?" — a
@@ -898,7 +1019,7 @@ function archiveMonthKey(task) {
   // A shared task is filed under the month *you* finished it, so two people
   // who did it weeks apart each see it where they left it.
   const stamp = task.assign_to_all
-    ? completionsFor(task).get(currentMember?.id) || task.inserted_at
+    ? settlementFor(task, currentMember?.id)?.completed_at || task.inserted_at
     : (task.completed_at || task.updated_at || task.inserted_at);
   return stamp ? String(stamp).slice(0, 7) : "unknown";
 }
@@ -1010,7 +1131,21 @@ function renderTodayRow(task, bucket, memberId) {
   editBtn.textContent = "Edit";
   editBtn.addEventListener("click", () => openForm(task));
 
-  li.append(checkbox, body, editBtn);
+  const deleteBtn = document.createElement("button");
+  deleteBtn.type = "button";
+  deleteBtn.className = "icon-btn delete-btn";
+  deleteBtn.textContent = "✕";
+  deleteBtn.title = "Delete task";
+  // On another member's card the row stands for them, so "remove from my list"
+  // is not on offer — it is not your list.
+  deleteBtn.addEventListener("click", () =>
+    deleteTask(task, { canRemoveForMe: !someoneElse }));
+
+  const actions = document.createElement("div");
+  actions.className = "today-task-actions";
+  actions.append(editBtn, deleteBtn);
+
+  li.append(checkbox, body, actions);
   return li;
 }
 
@@ -1121,7 +1256,7 @@ function renderToday() {
     // A shared task is on everybody's card until they have each ticked it, so
     // it counts toward every person's day — they each have to do it.
     const assigned = tasks.filter((t) =>
-      t.assignee_id === member.id || (t.assign_to_all && !isDoneFor(t, member.id)));
+      t.assignee_id === member.id || (t.assign_to_all && !isSettledFor(t, member.id)));
     todayMembersEl.appendChild(renderMemberCard(member, assigned));
   }
 
