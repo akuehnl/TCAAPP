@@ -479,8 +479,129 @@ function renderCalendar() {
   for (const label of calStepperMonths) label.textContent = formatMonth(calMonth);
 
   renderCalFilters();
+  renderSchoolCountdown();
   if (calView === "grid") renderCalGrid();
   else renderCalList();
+}
+
+// ---- School countdown ----
+//
+// Read from the calendar's own milestones rather than from dates written into
+// the code, so moving "Last Day of School" moves the countdown, and next year
+// works as soon as next year's dates are entered. Matched by title and not
+// category, in case someone files one under Other.
+
+const SCHOOL_START_TITLE = /\b(school starts|first day of school|classes begin)\b/i;
+const SCHOOL_END_TITLE = /\b(last day of school|school ends)\b/i;
+
+const countdownEl = $("school-countdown");
+
+function daysBetween(fromDate, toDate) {
+  return Math.round((toDate - fromDate) / 86400000);
+}
+
+// Pure, so it can be checked against any "today". Returns the phase and the
+// date being counted toward:
+//   in-session     — counting down to the last day
+//   out-of-session — counting down to the next first day
+//   no-end         — in session, but no last day entered for this year
+//   no-start       — on break, but next year's first day is not entered yet
+//   unknown        — no school dates on the calendar at all
+function schoolCountdown(events, today = todayAtMidnight()) {
+  const dates = (pattern) => events
+    .filter((e) => pattern.test(e.title))
+    .map((e) => parseDateOnly(e.starts_on))
+    .sort((a, b) => a - b);
+
+  const starts = dates(SCHOOL_START_TITLE);
+  const ends = dates(SCHOOL_END_TITLE);
+  if (!starts.length && !ends.length) return { phase: "unknown" };
+
+  // The school year you are in, if any: the latest first day on or before
+  // today, paired with the first last-day after it.
+  const currentStart = starts.filter((d) => d <= today).pop();
+  if (currentStart) {
+    const end = ends.find((d) => d >= currentStart);
+    if (!end) return { phase: "no-end" };
+    if (today <= end) return { phase: "in-session", target: end, days: daysBetween(today, end) };
+  }
+
+  const nextStart = starts.find((d) => d > today);
+  if (nextStart) return { phase: "out-of-session", target: nextStart, days: daysBetween(today, nextStart) };
+  return { phase: "no-start" };
+}
+
+// "36 weeks, 3 days" reads better as a big 36 with the days underneath; inside
+// the last week the weeks figure would be 0, so it switches to days.
+function countdownFigure(days) {
+  if (days < 7) return { number: days, unit: days === 1 ? "day" : "days", rest: "" };
+  const weeks = Math.floor(days / 7);
+  const extra = days % 7;
+  return {
+    number: weeks,
+    unit: weeks === 1 ? "week" : "weeks",
+    rest: extra ? ` and ${extra} day${extra === 1 ? "" : "s"}` : "",
+  };
+}
+
+function renderSchoolCountdown() {
+  const result = schoolCountdown(calendarEvents);
+  countdownEl.className = "school-countdown";
+  countdownEl.innerHTML = "";
+
+  if (result.phase === "unknown") {
+    // Nothing to count from; an empty box would only be noise.
+    countdownEl.classList.add("hidden");
+    return;
+  }
+
+  const text = document.createElement("div");
+  text.className = "countdown-text";
+  const headline = document.createElement("div");
+  headline.className = "countdown-headline";
+  const detail = document.createElement("div");
+  detail.className = "countdown-detail";
+  text.append(headline, detail);
+
+  const longDate = (d) => d.toLocaleDateString(undefined, {
+    weekday: "long", month: "long", day: "numeric", year: "numeric",
+  });
+
+  if (result.phase === "no-end" || result.phase === "no-start") {
+    headline.textContent = result.phase === "no-end"
+      ? "School is in session"
+      : "School is out for the year";
+    detail.textContent = result.phase === "no-end"
+      ? "Add a “Last Day of School” milestone to count down to the end of the year."
+      : "Add next year’s “School Starts” milestone to count down to the first day.";
+    countdownEl.appendChild(text);
+    return;
+  }
+
+  const inSession = result.phase === "in-session";
+  countdownEl.classList.add(inSession ? "in-session" : "out-of-session");
+
+  const figure = document.createElement("div");
+  figure.className = "countdown-figure";
+  const fig = countdownFigure(result.days);
+  const number = document.createElement("span");
+  number.className = "countdown-number";
+  number.textContent = String(fig.number);
+  const unit = document.createElement("span");
+  unit.className = "countdown-unit";
+  unit.textContent = fig.unit;
+  figure.append(number, unit);
+
+  if (result.days === 0) {
+    headline.textContent = inSession ? "Last day of school is today" : "School starts today";
+  } else {
+    headline.textContent = inSession
+      ? `${fig.number} ${fig.unit}${fig.rest} of school left`
+      : `${fig.number} ${fig.unit}${fig.rest} until school starts`;
+  }
+  detail.textContent = (inSession ? "Last day: " : "First day: ") + longDate(result.target);
+
+  countdownEl.append(figure, text);
 }
 
 // ---- Realtime ----

@@ -1409,6 +1409,125 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 .disabled-field { opacity: 0.55; }
 
+/* ---- Search ---- */
+
+.search-wrap {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 14px 10px 36px;
+  font-size: 15px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--subtle-bg)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236e6e73' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E")
+    no-repeat 12px center;
+}
+
+.search-input:focus { background-color: var(--card-bg); }
+
+.search-results {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 40;
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.16);
+  padding: 6px;
+}
+
+.search-group-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  padding: 10px 10px 4px;
+}
+
+.search-hit-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.search-hit-btn:hover,
+.search-hit-btn.active { background: #e8f0fe; }
+
+.search-hit-title { display: block; font-size: 14px; font-weight: 600; }
+.search-hit-title strong { background: #fff2a8; border-radius: 2px; }
+
+.search-hit-context {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+/* The matched term is what you are scanning for, so it gets both weight and
+   a highlight — bold alone is easy to miss in a dense list. */
+.search-hit-context strong { color: var(--text); background: #fff2a8; border-radius: 2px; }
+
+.search-hit-meta { display: block; margin-top: 3px; font-size: 11px; color: var(--muted); }
+
+.search-status { padding: 12px 10px; font-size: 13px; color: var(--muted); }
+
+/* Where a search result lands: pulsed so the eye finds it after the jump. */
+.search-landed { animation: search-landed 2.6s ease-out; }
+
+@keyframes search-landed {
+  0%, 30% { box-shadow: 0 0 0 3px var(--accent); background-color: #e8f0fe; }
+  100% { box-shadow: 0 0 0 3px transparent; }
+}
+
+/* ---- School countdown ---- */
+
+.school-countdown {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 0 0 16px;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--subtle-bg);
+}
+
+.school-countdown.in-session { background: #e8f0fe; border-color: #b9d0f7; }
+.school-countdown.out-of-session { background: #fff7e6; border-color: #f0d9a8; }
+
+.countdown-figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 64px;
+  line-height: 1;
+}
+
+.countdown-number { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.countdown-unit { font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 4px; }
+
+.countdown-text { min-width: 0; }
+.countdown-headline { font-size: 15px; font-weight: 600; }
+.countdown-detail { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
 /* ---- Delete confirmation ---- */
 
 .confirm-card {

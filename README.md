@@ -83,6 +83,46 @@ On the Today page you can only drop a task from **your own card**. On someone
 else's the option is not offered, and the database would refuse it anyway —
 their row is theirs to settle.
 
+## Search
+
+The box at the top of every page searches **every task** — anyone's, open or
+archived — and **every board meeting's** minutes: notes, motions, and agenda
+item titles and descriptions. It is a case-insensitive phrase match, so the
+bolded text in each result is exactly what you typed.
+
+Results come in two groups. Each shows the title, a line of context around the
+match with the term **bolded and highlighted**, and where it came from ("Task ·
+Josiah · Done", "Minutes · Tue, Sep 8, 2026 · note by Ethan"). Arrow keys move
+through them, Enter opens one, Escape closes the list.
+
+Opening a result goes to where the thing actually lives and pulses it:
+
+| Result | Opens |
+| --- | --- |
+| Open task | Shared board, with any assignee filter cleared so the row is visible |
+| Finished task | Archive |
+| Item from a closed meeting | Completed meetings, with that meeting expanded |
+| Item from a meeting still open, or a suggestion | That meeting's own week |
+
+Tasks are searched in the browser, since they are all loaded already, so they
+appear instantly. Minutes are searched in the database — the meetings archive
+only loads one meeting at a time — and fill in a moment later. A response that
+arrives after you have kept typing is discarded, so results never lag behind
+the query.
+
+## School countdown
+
+The Calendar page shows how many **weeks of school are left**, and once school
+is out, how many **weeks until it starts**. Inside the last week it switches to
+days.
+
+It reads the calendar's own **School Starts** and **Last Day of School**
+milestones rather than dates written into the code, so moving either event
+moves the countdown, and next year works as soon as next year's dates are
+entered. Until then, over the summer it says that next year's first day is not
+on the calendar yet rather than guessing. It counts calendar weeks, breaks
+included.
+
 ## How the Today page decides what's due
 
 `est_calendar_days` is treated as **lead time**, not effort — how long the task

@@ -914,6 +914,8 @@ function buildMetaLine(task) {
 function renderTask(task) {
   const li = document.createElement("li");
   li.className = "task-item";
+  // Lets search scroll straight to this row.
+  li.dataset.task = task.id;
   const mineDone = isDoneFor(task);
   if (mineDone) li.classList.add("complete");
   if (isOverdue(task)) li.classList.add("overdue");
@@ -1396,6 +1398,9 @@ function exitApp() {
   }
   tasks = [];
   completions = new Map();
+  // The next person to sign in on this browser must not see the last one's
+  // query or results.
+  resetSearch();
   members = [];
   membersById = new Map();
   currentMember = null;

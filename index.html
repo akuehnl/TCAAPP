@@ -55,6 +55,16 @@
       </div>
     </div>
 
+    <!-- Searches every task and every meeting's minutes, whichever section
+         you are in, so it sits above the section switcher rather than in one. -->
+    <div class="search-wrap" id="search-wrap">
+      <input type="search" id="search-input" class="search-input"
+             placeholder="Search tasks and meeting minutes"
+             autocomplete="off" aria-label="Search tasks and meeting minutes"
+             aria-controls="search-results" />
+      <div id="search-results" class="search-results hidden" role="listbox"></div>
+    </div>
+
     <nav class="sections">
       <button type="button" class="section-btn active" id="section-tasks">Tasks</button>
       <button type="button" class="section-btn" id="section-meetings">Board Meetings</button>
@@ -350,6 +360,10 @@
         </div>
       </div>
 
+      <!-- Filled from the calendar's own School Starts / Last Day of School
+           milestones, so moving either event moves the countdown. -->
+      <div id="school-countdown" class="school-countdown hidden"></div>
+
       <div class="tabs" role="tablist">
         <button type="button" class="tab active" id="tab-cal-grid" role="tab">Month</button>
         <button type="button" class="tab" id="tab-cal-list" role="tab">Upcoming</button>
@@ -474,5 +488,6 @@
 <script src="minutes.js"></script>
 <script src="people.js"></script>
 <script src="calendar.js"></script>
+<script src="search.js"></script>
 </body>
 </html>

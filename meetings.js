@@ -710,6 +710,8 @@ function renderArchivedMeeting(container, compiled) {
   for (const item of compiled.items) {
     const li = document.createElement("li");
     li.className = "agenda-item";
+    // Same attribute as the live agenda, so search can find the item in either.
+    li.dataset.item = item.id;
     if (item.completed_at) li.classList.add("item-complete");
 
     const body = document.createElement("div");
