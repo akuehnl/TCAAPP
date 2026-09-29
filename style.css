@@ -1497,6 +1497,37 @@ button:disabled { opacity: 0.6; cursor: default; }
   100% { box-shadow: 0 0 0 3px transparent; }
 }
 
+/* ---- Reordering the agenda by dragging ---- */
+
+.drag-handle {
+  flex-shrink: 0;
+  align-self: center;
+  padding: 6px 8px;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--muted);
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: grab;
+  /* Without this a drag starting on the handle scrolls the page on a phone
+     instead of moving the item. */
+  touch-action: none;
+}
+
+.drag-handle:hover { color: var(--text); background: var(--subtle-bg); }
+
+.agenda-item.dragging {
+  cursor: grabbing;
+  opacity: 0.9;
+  border-color: var(--accent);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+}
+
+/* Stops the agenda text being selected as the pointer sweeps over it. */
+.agenda-list.reordering { user-select: none; }
+.agenda-list.reordering .drag-handle { cursor: grabbing; }
+
 /* ---- Moving a meeting ---- */
 
 .reschedule-panel {

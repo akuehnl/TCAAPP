@@ -192,6 +192,20 @@ the books** if there is one, rather than to whatever date the Tuesday
 arithmetic produces — so business carried out of a meeting lands on the
 rescheduled Wednesday rather than beside it.
 
+### Reordering the agenda
+
+Approved items carry a **drag handle** (chair or admin, while the meeting is
+open): grab it and drag the item where it belongs. The whole new order is sent
+as one list and applied in a single statement, so the agenda cannot end up
+with two items claiming the same position — which the one-row-at-a-time up/down
+buttons could do if a write failed partway through.
+
+It is built on pointer events rather than HTML5 drag-and-drop, which does not
+fire on touchscreens; dragging works the same with a mouse or a finger, and
+holding near the top or bottom edge scrolls the page so an item can be moved
+further than one screenful. The **↑ / ↓** buttons stay — they are the keyboard
+route, and nudging one place is often quicker than dragging.
+
 | Tab | Purpose |
 | --- | --- |
 | **Suggestions** | Anyone on the roster proposes a topic: title, description, estimated minutes, and whether it puts forward a motion to vote on |
@@ -515,7 +529,9 @@ Run these in the Supabase SQL Editor **in order**, once each:
     moves a meeting to another date, agenda and minutes with it.
 29. [`supabase/migration-026-recurring-tasks.sql`](supabase/migration-026-recurring-tasks.sql) —
     adds recurring tasks, the next one created when the current one is done.
-30. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
+30. [`supabase/migration-027-agenda-order.sql`](supabase/migration-027-agenda-order.sql) —
+    saves a dragged agenda order in one call.
+31. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
     loads the recorded staff absences.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key

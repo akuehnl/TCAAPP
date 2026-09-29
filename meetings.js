@@ -362,6 +362,135 @@ async function returnToSuggestions(id) {
 
 // Rewrite sort_order across the whole approved list so it stays 0..n-1 with
 // no gaps, rather than swapping pairs and slowly drifting.
+// ---- Reordering by dragging ----
+//
+// Built on pointer events rather than HTML5 drag-and-drop, which does not
+// fire on touchscreens — half the board reads the agenda on a phone. The
+// up/down buttons stay: they are the keyboard route, and one place is often
+// quicker to nudge than to drag.
+
+let dragRow = null;
+let dragPointerId = null;
+let dragScrollTimer = null;
+let dragScrollStep = 0;
+let lastDragY = 0;
+// True while a row is being dragged, so somebody else's edit arriving over
+// realtime cannot re-render the list out from under it.
+let isDraggingAgenda = false;
+
+// The agenda rows, in the order they currently appear. The meeting clock is a
+// child of the same list, so it is filtered out — it is not reorderable and
+// it is not part of the saved order.
+function agendaRowElements() {
+  return [...agendaList.querySelectorAll("li[data-item]")].filter((el) => el !== meetingClock);
+}
+
+function startAgendaDrag(e, li) {
+  if (e.button > 0) return;               // left button or touch, not right-click
+  e.preventDefault();
+
+  dragRow = li;
+  dragPointerId = e.pointerId;
+  isDraggingAgenda = true;
+  li.classList.add("dragging");
+  agendaList.classList.add("reordering");
+  // Keeps the events coming to the handle even when the pointer runs ahead of
+  // the row it is dragging. Not fatal if the browser refuses it — the
+  // document-level listeners below still see the move.
+  try {
+    e.currentTarget.setPointerCapture(e.pointerId);
+  } catch {
+    // no capture; dragging still works, it just stops if the pointer leaves.
+  }
+}
+
+function placeDragRow(clientY) {
+  const others = agendaRowElements().filter((el) => el !== dragRow);
+
+  // The row to drop above is the first whose midpoint is below the pointer;
+  // past the last midpoint, the dragged row goes to the end.
+  const before = others.find((el) => {
+    const box = el.getBoundingClientRect();
+    return clientY < box.top + box.height / 2;
+  });
+
+  if (before) agendaList.insertBefore(dragRow, before);
+  else if (others.length) others[others.length - 1].after(dragRow);
+}
+
+// A ten-item agenda does not fit on a phone, so holding the row near the top
+// or bottom edge scrolls the page. Without this an item could not be dragged
+// further than one screen: the pointer would run out of room.
+function updateDragScroll(clientY) {
+  const margin = 64;
+  const step = clientY < margin ? -10 : clientY > window.innerHeight - margin ? 10 : 0;
+
+  // Compared against the direction already running, not merely against zero:
+  // the timer captures its step, so dragging from the top edge to the bottom
+  // one has to replace the timer or it would carry on scrolling upward.
+  if (step === dragScrollStep) return;
+
+  clearInterval(dragScrollTimer);
+  dragScrollTimer = null;
+  dragScrollStep = step;
+  if (!step) return;
+
+  // On a timer, not on pointermove: held still at the edge, no move events
+  // arrive and the scrolling would stall. The row is re-placed on each tick
+  // because the list slides under a pointer that has not moved.
+  dragScrollTimer = setInterval(() => {
+    window.scrollBy(0, step);
+    placeDragRow(lastDragY);
+  }, 16);
+}
+
+function moveAgendaDrag(e) {
+  if (!dragRow || e.pointerId !== dragPointerId) return;
+  e.preventDefault();
+
+  lastDragY = e.clientY;
+  placeDragRow(lastDragY);
+  updateDragScroll(lastDragY);
+}
+
+async function endAgendaDrag(e) {
+  if (!dragRow || (e && e.pointerId !== dragPointerId)) return;
+
+  const row = dragRow;
+  dragRow = null;
+  dragPointerId = null;
+  clearInterval(dragScrollTimer);
+  dragScrollTimer = null;
+  dragScrollStep = 0;
+  row.classList.remove("dragging");
+  agendaList.classList.remove("reordering");
+
+  const ids = agendaRowElements().map((el) => el.dataset.item);
+  const current = approvedItems();
+
+  // A click on the handle, or a drag that ended where it started, is not a
+  // reorder and should not write anything.
+  if (ids.length === current.length && current.every((item, i) => item.id === ids[i])) {
+    isDraggingAgenda = false;
+    return;
+  }
+
+  const { error } = await supabaseClient.rpc("set_agenda_order", {
+    p_meeting_date: meetingDate,
+    p_ids: ids,
+  });
+
+  isDraggingAgenda = false;
+  if (error) alert(error.message);
+  // Either way: on success this confirms the new order, and on failure it puts
+  // the list back the way the database still has it.
+  await loadAgenda();
+}
+
+document.addEventListener("pointermove", moveAgendaDrag);
+document.addEventListener("pointerup", endAgendaDrag);
+document.addEventListener("pointercancel", endAgendaDrag);
+
 async function moveItem(id, direction) {
   const list = approvedItems();
   const from = list.findIndex((i) => i.id === id);
@@ -580,6 +709,19 @@ function renderAgendaRow(item, { approved }) {
   }
 
   li.append(body, actions);
+
+  // Sits at the head of the row, next to the item's number, so the thing you
+  // grab is beside the thing that shows the position.
+  if (approved && isChair() && !isMeetingComplete()) {
+    const handle = document.createElement("button");
+    handle.type = "button";
+    handle.className = "drag-handle";
+    handle.textContent = "⠿";
+    handle.title = "Drag to reorder";
+    handle.setAttribute("aria-label", "Drag to reorder this item");
+    handle.addEventListener("pointerdown", (e) => startAgendaDrag(e, li));
+    li.insertBefore(handle, body);
+  }
 
   if (approved) {
     body.appendChild(buildMinutesBlock(item, isMeetingComplete()));
@@ -1251,7 +1393,11 @@ function subscribeToAgenda() {
 
   agendaChannel = supabaseClient
     .channel("agenda-changes")
-    .on("postgres_changes", { event: "*", schema: "public", table: "agenda_items" }, () => loadAgenda())
+    .on("postgres_changes", { event: "*", schema: "public", table: "agenda_items" }, () => {
+      // Re-rendering mid-drag would delete the row being dragged and leave the
+      // pointer holding nothing. The drag reloads the agenda when it ends.
+      if (!isDraggingAgenda) loadAgenda();
+    })
     .subscribe();
 }
 
