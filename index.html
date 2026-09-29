@@ -140,6 +140,20 @@
       </div>
 
       <div class="field">
+        <label for="f-repeat">Repeats</label>
+        <select id="f-repeat">
+          <option value="">Does not repeat</option>
+          <option value="1:day">Every day</option>
+          <option value="1:week">Every week</option>
+          <option value="2:week">Every 2 weeks</option>
+          <option value="1:month">Every month</option>
+          <option value="3:month">Every 3 months</option>
+          <option value="6:month">Every 6 months</option>
+          <option value="1:year">Every year</option>
+        </select>
+      </div>
+
+      <div class="field">
         <label for="f-work-hours">Est. work hours</label>
         <input type="number" id="f-work-hours" min="0" step="0.25" placeholder="Hands-on effort" />
       </div>
@@ -211,6 +225,22 @@
         <button type="button" id="new-agenda-btn">+ Suggest an item</button>
         <button type="button" id="start-meeting-btn" class="secondary hidden">Start meeting</button>
         <button type="button" id="complete-meeting-btn" class="secondary hidden">Mark meeting complete</button>
+        <button type="button" id="reschedule-btn" class="secondary hidden">Move meeting&hellip;</button>
+
+        <label class="inline-field" id="meeting-jump-wrap">
+          <span>Go to</span>
+          <input type="date" id="meeting-jump" />
+        </label>
+      </div>
+
+      <!-- Moving a meeting carries its agenda, minutes and attendance with it,
+           so it asks rather than doing it on one click of a date picker. -->
+      <div id="reschedule-panel" class="reschedule-panel hidden">
+        <label for="reschedule-date">Move this meeting to</label>
+        <input type="date" id="reschedule-date" />
+        <button type="button" id="reschedule-save">Move meeting</button>
+        <button type="button" id="reschedule-cancel" class="secondary">Cancel</button>
+        <span id="reschedule-message" class="message"></span>
       </div>
 
       <form id="agenda-form" class="task-form hidden">

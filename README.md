@@ -63,6 +63,30 @@ constraint — otherwise there would be two different answers to whose task it
 is. The **Status** field is disabled on a shared task, since there is no single
 status to set.
 
+## Recurring tasks
+
+Set **Repeats** on a task — daily, weekly, fortnightly, monthly, quarterly,
+half-yearly or yearly — and finishing it creates the next one. There is only
+ever **one open occurrence at a time**: a year of rows created up front would
+bury the board in work nobody has looked at yet, and editing the wording or
+the assignee would only reach the occurrences not yet generated.
+
+The next occurrence is created by a database trigger, not by the browser, so
+it happens exactly once no matter who ticks the box or whether their tab stays
+open. Unticking a finished task and ticking it again does not produce a second
+one — each occurrence records which task it came from, and that is what stops
+a duplicate.
+
+The next due date is counted from the **due date, not the completion date**,
+so a task finished three days late still lands on its normal schedule instead
+of drifting later every time round. A task with no due date counts from today
+instead. If a task was finished so long after it was due that the next date
+would already have passed, it rolls forward until it is in the future.
+
+A shared task's next occurrence appears when the **last person settles it** —
+settled, not finished, because someone who dropped it is never going to tick
+it and waiting on them would stop the series dead.
+
 ## Deleting a task
 
 Every delete asks first, from any view. An ordinary task is deleted for
@@ -148,10 +172,25 @@ Tasks with no due date can't produce a `start_by`, so they appear in a separate
 
 ## Board Meetings
 
-Meetings are weekly on **Tuesdays**. The date shown defaults to the next
-Tuesday (on a Tuesday it stays on that day rather than skipping a week), and
-the arrows step back and forward a week at a time, so past agendas stay
-readable.
+Meetings are normally weekly on **Tuesdays**, but any one of them can be
+moved. The page opens on the next meeting that actually exists, and the arrows
+walk between real meetings rather than stepping seven days — so a meeting
+moved to a Wednesday is what you land on, not the empty Tuesday beside it.
+With nothing scheduled yet they fall back to stepping a week, and **Go to**
+jumps to any date.
+
+**Move meeting…** (chair or admin, and only while the meeting is still open)
+moves the meeting to another date. A meeting's date is its identity, spread
+across three tables, so the agenda, the minutes and the attendance all move
+together in a single database call — a failure halfway through would otherwise
+leave them on different dates. Moving one onto a date that already has a
+meeting is refused rather than merged: two agendas in one pile is not
+something the chair can undo, and it is far more likely to be a typo.
+
+Closing a meeting carries unfinished items to the **next meeting already on
+the books** if there is one, rather than to whatever date the Tuesday
+arithmetic produces — so business carried out of a meeting lands on the
+rescheduled Wednesday rather than beside it.
 
 | Tab | Purpose |
 | --- | --- |
@@ -472,7 +511,11 @@ Run these in the Supabase SQL Editor **in order**, once each:
     adds tasks assigned to everyone, each person ticking their own box.
 27. [`supabase/migration-024-remove-shared-task-for-one.sql`](supabase/migration-024-remove-shared-task-for-one.sql) —
     lets one person drop off a shared task without deleting it for the board.
-28. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
+28. [`supabase/migration-025-reschedule-meeting.sql`](supabase/migration-025-reschedule-meeting.sql) —
+    moves a meeting to another date, agenda and minutes with it.
+29. [`supabase/migration-026-recurring-tasks.sql`](supabase/migration-026-recurring-tasks.sql) —
+    adds recurring tasks, the next one created when the current one is done.
+30. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
     loads the recorded staff absences.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key

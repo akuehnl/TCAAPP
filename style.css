@@ -1497,6 +1497,28 @@ button:disabled { opacity: 0.6; cursor: default; }
   100% { box-shadow: 0 0 0 3px transparent; }
 }
 
+/* ---- Moving a meeting ---- */
+
+.reschedule-panel {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--subtle-bg);
+}
+
+.reschedule-panel label { font-size: 13px; font-weight: 600; }
+.reschedule-panel input[type="date"] { width: auto; margin: 0; }
+.reschedule-panel .message { margin: 0; }
+
+#meeting-jump-wrap input[type="date"] { width: auto; margin: 0; }
+
+.repeat-badge { background: #e6f4ea; color: #146c2e; }
+
 /* ---- School countdown ---- */
 
 .school-countdown {

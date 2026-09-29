@@ -20,6 +20,13 @@ const completeMeetingBtn = $("complete-meeting-btn");
 const startMeetingBtn = $("start-meeting-btn");
 const meetingClock = $("meeting-clock");
 const meetingToolbar = $("meeting-toolbar");
+const meetingJump = $("meeting-jump");
+const rescheduleBtn = $("reschedule-btn");
+const reschedulePanel = $("reschedule-panel");
+const rescheduleDate = $("reschedule-date");
+const rescheduleSave = $("reschedule-save");
+const rescheduleCancel = $("reschedule-cancel");
+const rescheduleMessage = $("reschedule-message");
 const suggestionsView = $("suggestions-view");
 const agendaViewEl = $("agenda-view");
 const suggestionList = $("suggestion-list");
@@ -78,9 +85,45 @@ function upcomingMeeting(from = todayAtMidnight()) {
   return date;
 }
 
-function shiftMeeting(isoDate, weeks) {
+// Every date that has a meeting or agenda items on it. Meetings are usually
+// weekly Tuesdays, but one can be moved, so the arrows walk the meetings that
+// actually exist rather than stepping seven days and landing on an empty
+// Tuesday while the real meeting sits on the Wednesday.
+let scheduledMeetingDates = [];
+
+async function loadScheduledDates() {
+  const [meetingsRes, itemsRes] = await Promise.all([
+    supabaseClient.from("meetings").select("meeting_date"),
+    supabaseClient.from("agenda_items").select("meeting_date"),
+  ]);
+  if (meetingsRes.error) console.error(meetingsRes.error);
+  if (itemsRes.error) console.error(itemsRes.error);
+
+  const dates = new Set([
+    ...(meetingsRes.data ?? []).map((r) => r.meeting_date),
+    ...(itemsRes.data ?? []).map((r) => r.meeting_date),
+  ]);
+  scheduledMeetingDates = [...dates].sort();
+}
+
+// The next meeting on the books, or the next Tuesday when nothing is
+// scheduled yet. ISO dates sort lexicographically, so plain string compares
+// are safe here.
+function nextScheduledDate() {
+  const today = toIsoDate(todayAtMidnight());
+  return scheduledMeetingDates.find((d) => d >= today) ?? toIsoDate(upcomingMeeting());
+}
+
+// The previous or next real meeting; a week either way when there is none, so
+// the arrows still work for planning a meeting that does not exist yet.
+function stepMeeting(isoDate, direction) {
+  const scheduled = direction < 0
+    ? scheduledMeetingDates.filter((d) => d < isoDate).pop()
+    : scheduledMeetingDates.find((d) => d > isoDate);
+  if (scheduled) return scheduled;
+
   const date = parseDateOnly(isoDate);
-  date.setDate(date.getDate() + weeks * 7);
+  date.setDate(date.getDate() + direction * 7);
   return toIsoDate(date);
 }
 
@@ -121,13 +164,67 @@ tabAgenda.addEventListener("click", () => setMeetingSubView("agenda"));
 tabCompleted.addEventListener("click", () => setMeetingSubView("completed"));
 
 meetingPrev.addEventListener("click", async () => {
-  meetingDate = shiftMeeting(meetingDate, -1);
+  meetingDate = stepMeeting(meetingDate, -1);
   syncRoute();
   await loadAgenda();
 });
 
 meetingNext.addEventListener("click", async () => {
-  meetingDate = shiftMeeting(meetingDate, 1);
+  meetingDate = stepMeeting(meetingDate, 1);
+  syncRoute();
+  await loadAgenda();
+});
+
+// Open to anyone: going to look at a particular week is not a chair power.
+meetingJump.addEventListener("change", async () => {
+  if (!meetingJump.value) return;
+  meetingDate = meetingJump.value;
+  syncRoute();
+  await loadAgenda();
+});
+
+// ---- Moving a meeting ----
+
+rescheduleBtn.addEventListener("click", () => {
+  const wasOpen = !reschedulePanel.classList.contains("hidden");
+  reschedulePanel.classList.toggle("hidden", wasOpen);
+  if (wasOpen) return;
+  rescheduleDate.value = meetingDate;
+  setMessage(rescheduleMessage, "");
+  rescheduleDate.focus();
+});
+
+rescheduleCancel.addEventListener("click", () => reschedulePanel.classList.add("hidden"));
+
+rescheduleSave.addEventListener("click", async () => {
+  const target = rescheduleDate.value;
+  if (!target) {
+    setMessage(rescheduleMessage, "Pick a date to move the meeting to.", "error");
+    return;
+  }
+  if (target === meetingDate) {
+    reschedulePanel.classList.add("hidden");
+    return;
+  }
+
+  rescheduleSave.disabled = true;
+  setMessage(rescheduleMessage, "Moving…");
+
+  // One call, so the agenda, the minutes and the attendance cannot end up on
+  // different dates.
+  const { error } = await supabaseClient.rpc("reschedule_meeting", {
+    p_from: meetingDate,
+    p_to: target,
+  });
+
+  rescheduleSave.disabled = false;
+  if (error) {
+    setMessage(rescheduleMessage, error.message, "error");
+    return;
+  }
+
+  reschedulePanel.classList.add("hidden");
+  meetingDate = target;
   syncRoute();
   await loadAgenda();
 });
@@ -144,7 +241,10 @@ async function applyMeetingRoute(route) {
 }
 
 async function loadAgenda() {
-  if (!meetingDate) meetingDate = toIsoDate(upcomingMeeting());
+  await loadScheduledDates();
+  // Opens on the next meeting that actually exists, so a meeting moved off
+  // its Tuesday is what you land on rather than the empty Tuesday.
+  if (!meetingDate) meetingDate = nextScheduledDate();
 
   const { data, error } = await supabaseClient
     .from("agenda_items")
@@ -176,7 +276,7 @@ async function loadAgenda() {
 // and over rather than in the one place the board will next deal with it.
 async function loadHeldOver() {
   heldOverItems = [];
-  if (meetingDate !== toIsoDate(upcomingMeeting())) return;
+  if (meetingDate !== nextScheduledDate()) return;
 
   const { data, error } = await supabaseClient
     .from("agenda_items")
@@ -1098,6 +1198,12 @@ function renderMeetings() {
     "hidden", complete || !approved.length || meetingSubView !== "agenda" || (started && !isChair())
   );
   startMeetingBtn.textContent = started ? "Reset clock" : "Start meeting";
+
+  meetingJump.value = meetingDate;
+  // Moving a closed meeting would drag its minutes to a date the archive has
+  // already filed them under, so it is offered only while one is still open.
+  rescheduleBtn.classList.toggle("hidden", !isChair() || complete);
+  if (!isChair() || complete) reschedulePanel.classList.add("hidden");
 
   newAgendaBtn.classList.toggle("hidden", complete);
   // Once complete this is the Reopen button, so it has to stay visible even

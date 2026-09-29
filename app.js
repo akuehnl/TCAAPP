@@ -66,6 +66,7 @@ const confirmBody = $("confirm-body");
 const confirmActions = $("confirm-actions");
 const fWorkHours = $("f-work-hours");
 const fCalendarDays = $("f-calendar-days");
+const fRepeat = $("f-repeat");
 const fProjectLabel = $("f-project-label");
 const fNotes = $("f-notes");
 
@@ -490,6 +491,9 @@ function openForm(task) {
   fStatus.value = task?.is_complete ? "done" : "open";
   fWorkHours.value = task?.est_work_hours ?? "";
   fCalendarDays.value = task?.est_calendar_days ?? "";
+  fRepeat.value = task?.repeat_every && task?.repeat_unit
+    ? `${task.repeat_every}:${task.repeat_unit}`
+    : "";
   fProjectLabel.value = task?.project_label ?? "";
   fNotes.value = task?.notes ?? "";
 
@@ -585,6 +589,10 @@ function readForm() {
     is_complete: toAll ? false : fStatus.value === "done",
     est_work_hours: numberOrNull(fWorkHours),
     est_calendar_days: numberOrNull(fCalendarDays),
+    // "2:week" -> every 2 weeks. Both columns are null together; the database
+    // has a check constraint saying so.
+    repeat_every: fRepeat.value ? Number(fRepeat.value.split(":")[0]) : null,
+    repeat_unit: fRepeat.value ? fRepeat.value.split(":")[1] : null,
     project_label: textOrNull(fProjectLabel),
     notes: textOrNull(fNotes),
   };
@@ -871,6 +879,17 @@ function sortTasks(list) {
   });
 }
 
+// A recurring task is one task at a time: finishing it creates the next, which
+// the database does with a trigger. The badge is how you can tell before
+// ticking it that another one is coming.
+const REPEAT_ONCE = { day: "Repeats daily", week: "Repeats weekly", month: "Repeats monthly", year: "Repeats yearly" };
+
+function repeatLabel(task) {
+  if (!task.repeat_every || !task.repeat_unit) return null;
+  if (task.repeat_every === 1) return REPEAT_ONCE[task.repeat_unit] ?? null;
+  return `Repeats every ${task.repeat_every} ${task.repeat_unit}s`;
+}
+
 function buildMetaLine(task) {
   const parts = [];
 
@@ -949,6 +968,15 @@ function renderTask(task) {
     label.className = "badge label-badge";
     label.textContent = task.project_label;
     titleRow.appendChild(label);
+  }
+
+  const repeats = repeatLabel(task);
+  if (repeats) {
+    const badge = document.createElement("span");
+    badge.className = "badge repeat-badge";
+    badge.textContent = repeats;
+    badge.title = "Finishing this one creates the next";
+    titleRow.appendChild(badge);
   }
 
   body.appendChild(titleRow);
