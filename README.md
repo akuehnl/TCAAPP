@@ -39,6 +39,10 @@ there is only one due date, so moving it moves the deadline for the whole board
 at once. Copies would need a fan-out update to stay in step and would drift the
 first time one failed.
 
+"Everyone" means everyone who can **open the app** — the roster also holds
+assignees with no login, who can never tick a box. Counting them would leave
+every shared task unfinished forever.
+
 Who has finished lives in a separate table, one row per person. Ticking your
 own box never touches anyone else's, so:
 
@@ -86,6 +90,29 @@ would already have passed, it rolls forward until it is in the future.
 A shared task's next occurrence appears when the **last person settles it** —
 settled, not finished, because someone who dropped it is never going to tick
 it and waiting on them would stop the series dead.
+
+## Assignees who don't use the app
+
+Not everyone who gets handed work needs an account. **People → + Add person**
+with the **email left blank** creates an assignee who appears in every
+assignee dropdown but cannot sign in — an outside partner like **Concordis**,
+a volunteer, a staff member who was never given a login. The People page
+badges them **No login**.
+
+Such a roster entry is deliberately inert everywhere participation is implied:
+
+| | Account-less assignee |
+| --- | --- |
+| Assignee dropdown, task filter | Yes |
+| Own card on the Today page | Yes, showing work assigned to them |
+| Counted in a shared "Everyone" task | **No** — they could never tick it |
+| Meeting roll call and voting | **No** |
+
+People added through the People page now start **non-voting**. The column
+defaults to voting, and `add_member()` never overrode it, so every helper
+added this way had been quietly joining the board's roll call. Voting is
+granted afterwards with the toggle already on the People page — the safe
+default is the one that cannot change who votes by accident.
 
 ## Deleting a task
 
@@ -445,6 +472,7 @@ whether or not they've created a login yet.
 | Josiah Warner | Board Chair | Limited — decision-making, culture, enrollment, hiring |
 | Ethan Nelson | Secretary | Limited — vendor contracts (signage, security cameras) |
 | Joe Martinez | Board Oversight | Limited — retired; errands, supply runs, church outreach, theology |
+| Concordis | Outside partner | Assignable only — no login, no vote |
 
 An account is linked to its roster row automatically at signup by matching
 email address. **Signing up with an address that isn't on the roster gets you
@@ -531,7 +559,9 @@ Run these in the Supabase SQL Editor **in order**, once each:
     adds recurring tasks, the next one created when the current one is done.
 30. [`supabase/migration-027-agenda-order.sql`](supabase/migration-027-agenda-order.sql) —
     saves a dragged agenda order in one call.
-31. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
+31. [`supabase/migration-028-assignees-without-accounts.sql`](supabase/migration-028-assignees-without-accounts.sql) —
+    adds Concordis, and keeps account-less assignees out of votes and shared tasks.
+32. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
     loads the recorded staff absences.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key

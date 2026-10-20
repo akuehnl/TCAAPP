@@ -202,15 +202,24 @@ function isDoneFor(task, memberId = currentMember?.id ?? null) {
   return settlementFor(task, memberId)?.state === "done";
 }
 
+// Who "Everyone" means on a shared task: the people who can actually open the
+// app. The roster also carries assignees with no login — an outside partner
+// like Concordis, a helper who was never given an account — who can hold a
+// task but can never tick a box. Counting them would leave every shared task
+// unfinished forever.
+function appMembers() {
+  return members.filter((m) => m.email);
+}
+
 // Counted, never stored, so it cannot drift away from the individual ticks.
 // Only active members count: someone taken off the roster should not hold a
 // shared task open forever.
 function doneCount(task) {
-  return members.filter((m) => isDoneFor(task, m.id)).length;
+  return appMembers().filter((m) => isDoneFor(task, m.id)).length;
 }
 
 function removedCount(task) {
-  return members.filter((m) => settlementFor(task, m.id)?.state === "removed").length;
+  return appMembers().filter((m) => settlementFor(task, m.id)?.state === "removed").length;
 }
 
 // Settled as far as the board is concerned: nobody is still owed it. Someone
@@ -218,8 +227,9 @@ function removedCount(task) {
 // waiting on them would strand the task on the board forever.
 function isDoneForBoard(task) {
   if (!task.assign_to_all) return task.is_complete;
-  const settled = members.filter((m) => isSettledFor(task, m.id)).length;
-  return members.length > 0 && settled >= members.length;
+  const people = appMembers();
+  const settled = people.filter((m) => isSettledFor(task, m.id)).length;
+  return people.length > 0 && settled >= people.length;
 }
 
 function isOverdue(task, memberId) {
@@ -465,7 +475,10 @@ function visibleTasks() {
   } else if (assigneeFilter.value) {
     // A shared task is genuinely one of this person's, so filtering by name
     // has to show it — otherwise their filtered list understates their work.
-    list = list.filter((t) => t.assignee_id === assigneeFilter.value || t.assign_to_all);
+    // Unless they have no login, in which case it was never theirs.
+    const picked = membersById.get(assigneeFilter.value);
+    list = list.filter((t) =>
+      t.assignee_id === assigneeFilter.value || (t.assign_to_all && picked?.email));
   }
 
   return list;
@@ -899,7 +912,7 @@ function buildMetaLine(task) {
   if (currentView !== "mine" || task.assign_to_all) {
     if (task.assign_to_all) {
       const dropped = removedCount(task);
-      let line = `Everyone — ${doneCount(task)} of ${members.length} done`;
+      let line = `Everyone — ${doneCount(task)} of ${appMembers().length} done`;
       if (dropped) line += `, ${dropped} removed`;
       parts.push(line);
       // Otherwise a task you dropped looks identical to one you still owe.
@@ -1285,8 +1298,12 @@ function renderToday() {
   for (const member of members) {
     // A shared task is on everybody's card until they have each ticked it, so
     // it counts toward every person's day — they each have to do it.
+    // Shared tasks only reach people who can tick them off. On an
+    // account-less assignee's card they would pile up and never clear.
+    const shared = Boolean(member.email);
     const assigned = tasks.filter((t) =>
-      t.assignee_id === member.id || (t.assign_to_all && !isSettledFor(t, member.id)));
+      t.assignee_id === member.id
+      || (shared && t.assign_to_all && !isSettledFor(t, member.id)));
     todayMembersEl.appendChild(renderMemberCard(member, assigned));
   }
 
