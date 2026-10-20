@@ -28,7 +28,6 @@ const pFullName = $("p-full-name");
 const pEmail = $("p-email");
 const pRole = $("p-role");
 const pBandwidth = $("p-bandwidth");
-const pCapacity = $("p-capacity");
 const pSave = $("p-save");
 const pCancel = $("p-cancel");
 
@@ -146,7 +145,6 @@ personForm.addEventListener("submit", async (e) => {
     p_email: pEmail.value.trim() || null,
     p_role: pRole.value.trim() || null,
     p_bandwidth: pBandwidth.value,
-    p_capacity: Number(pCapacity.value) || 1,
   });
 
   pSave.disabled = false;
@@ -309,9 +307,6 @@ function renderPersonRow(member) {
   const bits = [];
   if (member.role) bits.push(member.role);
   if (member.email) bits.push(member.email);
-  if (member.daily_capacity_hours != null) {
-    bits.push(`${Number(member.daily_capacity_hours)}h/day capacity`);
-  }
   meta.textContent = bits.join("  ·  ");
   body.appendChild(meta);
 

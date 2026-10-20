@@ -1228,8 +1228,6 @@ function renderMemberCard(member, assigned) {
   // Undated work has no schedule, so it doesn't count toward today's load.
   const scheduled = [...buckets.overdue, ...buckets.active];
   const load = scheduled.reduce((sum, { task }) => sum + dailyLoad(task), 0);
-  const capacity = Number(member.daily_capacity_hours) || 0;
-  const over = capacity > 0 && load > capacity;
 
   const card = document.createElement("div");
   card.className = "member-card";
@@ -1250,25 +1248,17 @@ function renderMemberCard(member, assigned) {
     who.appendChild(role);
   }
 
+  // Just the hours scheduled, with nothing to measure them against. A bar
+  // comparing them to a per-person capacity made the page read as a verdict
+  // on how busy someone ought to be, which is not the board's business and
+  // not something a guessed number can judge.
   const loadEl = document.createElement("div");
-  loadEl.className = "member-load" + (over ? " over" : "");
-  loadEl.textContent = capacity > 0
-    ? `${formatHours(load)} of ${formatHours(capacity)}`
-    : formatHours(load);
-  if (over) loadEl.title = "Scheduled work exceeds this person's daily capacity";
+  loadEl.className = "member-load";
+  loadEl.textContent = formatHours(load);
+  loadEl.title = "Hours of work scheduled for today";
 
   head.append(who, loadEl);
   card.appendChild(head);
-
-  if (capacity > 0) {
-    const bar = document.createElement("div");
-    bar.className = "load-bar";
-    const fill = document.createElement("div");
-    fill.className = "load-fill" + (over ? " over" : "");
-    fill.style.width = `${Math.min(load / capacity, 1) * 100}%`;
-    bar.appendChild(fill);
-    card.appendChild(bar);
-  }
 
   const sections = [
     renderTodaySection("Overdue", buckets.overdue, "danger", member.id ?? null),
@@ -1312,7 +1302,7 @@ function renderToday() {
     !t.assignee_id && !t.assign_to_all && todayBucket(t));
   if (orphans.length) {
     todayMembersEl.appendChild(
-      renderMemberCard({ name: "Unassigned", role: null, daily_capacity_hours: 0 }, orphans)
+      renderMemberCard({ name: "Unassigned", role: null }, orphans)
     );
   }
 }

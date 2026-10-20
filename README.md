@@ -190,9 +190,12 @@ question from "what's due soon". Ordering security cameras due Sep 20 with a
 35-day lead time is already late on Aug 17; a budget task due Aug 28 with a
 3-day lead time isn't due to start until Aug 25.
 
-Each member's `daily_load` is summed across their overdue and in-flight tasks
-and compared against `daily_capacity_hours` from the roster (seeded at 3h/day
-for high-bandwidth members, 1h/day for limited). Going over turns the bar red.
+Each member's card totals the `daily_load` of their overdue and in-flight
+tasks and shows it as plain hours. There is no capacity bar: comparing that
+total against a per-person daily allowance made the page read as a verdict on
+how busy someone ought to be, which a guessed number is in no position to
+judge. `members.daily_capacity_hours` still exists in the database and is
+simply unused.
 
 Tasks with no due date can't produce a `start_by`, so they appear in a separate
 "No due date" bucket rather than disappearing, and don't count toward load.

@@ -286,24 +286,6 @@ button:disabled { opacity: 0.6; cursor: default; }
   white-space: nowrap;
 }
 
-.member-load.over { color: var(--danger); font-weight: 600; }
-
-.load-bar {
-  height: 4px;
-  background: #ececf0;
-  border-radius: 2px;
-  margin-top: 8px;
-  overflow: hidden;
-}
-
-.load-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 2px;
-}
-
-.load-fill.over { background: var(--danger); }
-
 .today-section { margin-top: 14px; }
 
 .today-section-title {
