@@ -17,6 +17,36 @@
 -- Run in the Supabase SQL Editor after migration 026. Safe to re-run.
 
 -- ---------------------------------------------------------------------------
+-- 0. The capacity column, if migration 003 was never run.
+--
+-- Same guarded block as 003, repeated here because this migration is the
+-- first statement that actually touches the column: add_member() has
+-- referenced it since 007, but plpgsql does not resolve column names until
+-- the function runs, so a missing column stayed invisible until now.
+--
+-- No-ops if 003 did run. Running 003 afterwards is equally harmless.
+-- ---------------------------------------------------------------------------
+
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'members'
+      and column_name = 'daily_capacity_hours'
+  ) then
+    alter table public.members
+      add column daily_capacity_hours numeric(4, 1) not null default 1;
+
+    -- 003's starting estimates from the bandwidth notes, so the Today page's
+    -- load bars mean something straight away.
+    update public.members set daily_capacity_hours = 3 where bandwidth = 'high';
+    update public.members set daily_capacity_hours = 1 where bandwidth = 'limited';
+  end if;
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- 1. New people are helpers, not voting board members.
 --
 -- Same signature as migration 007, so nothing that calls it has to change.
