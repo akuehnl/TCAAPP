@@ -1,15 +1,65 @@
 :root {
-  --bg: #f5f5f7;
-  --card-bg: #ffffff;
-  --subtle-bg: #fafafa;
-  --text: #1d1d1f;
-  --muted: #6e6e73;
-  --border: #d2d2d7;
-  --accent: #0071e3;
-  --accent-hover: #0077ed;
-  --danger: #d70015;
-  --success: #1a7f37;
-  color-scheme: light;
+  /* Dark by default. Most of this work happens in the evening, and a white
+     page at 10pm is the complaint that produced this palette. Every colour in
+     the stylesheet is a token below, so the whole theme is these few lines. */
+  --bg: #15171c;
+  --card-bg: #1d2026;
+  --subtle-bg: #23262e;
+  --text: #e9eaee;
+  --muted: #9ba1ac;
+  --border: #343843;
+
+  --accent: #4c9eff;
+  --accent-hover: #6cb0ff;
+  /* Text printed on an accent or danger fill. Dark, because the fills are
+     light enough on a dark page that white on them would glare. */
+  --on-accent: #0c1420;
+
+  --danger: #ff6b6b;
+  --danger-hover: #e05454;
+  --success: #4ade80;
+  --success-hover: #3cc26c;
+
+  /* Tinted chips and panels: a wash of the hue, with a light version of the
+     same hue for text. On a dark ground a pale fill with dark text — what
+     these were — reads as a hole punched in the page. */
+  --tint-info-bg: rgba(76, 158, 255, 0.16);
+  --tint-info-fg: #9fc8ff;
+  --tint-info-border: rgba(76, 158, 255, 0.45);
+  --tint-warn-bg: rgba(240, 180, 60, 0.16);
+  --tint-warn-fg: #f0c674;
+  --tint-warn-border: rgba(240, 180, 60, 0.5);
+  --tint-danger-bg: rgba(255, 107, 107, 0.16);
+  --tint-danger-fg: #ff9f9f;
+  --tint-success-bg: rgba(74, 222, 128, 0.15);
+  --tint-success-fg: #8fe8ab;
+  --tint-purple-bg: rgba(167, 139, 250, 0.18);
+  --tint-purple-fg: #c7b6fd;
+  --chip-bg: #2b2f38;
+  --highlight-bg: rgba(250, 204, 21, 0.3);
+
+  --accent-soft: rgba(76, 158, 255, 0.14);
+  --danger-soft: rgba(255, 107, 107, 0.12);
+  --danger-line: rgba(255, 107, 107, 0.5);
+  --success-soft: rgba(74, 222, 128, 0.1);
+  --hover-soft: rgba(255, 255, 255, 0.07);
+
+  /* Brand colours for the external link buttons, kept recognisable. */
+  --brand-zoom: #2d8cff;
+  --brand-zoom-hover: #4b9dff;
+  --brand-concordis: #7a66d8;
+  --brand-concordis-hover: #8e7ce4;
+  --brand-drive: #2a9d4f;
+  --brand-drive-hover: #34b35c;
+
+  --shadow-sm: rgba(0, 0, 0, 0.35);
+  --shadow-md: rgba(0, 0, 0, 0.5);
+  --shadow-lg: rgba(0, 0, 0, 0.6);
+  --overlay: rgba(0, 0, 0, 0.62);
+
+  /* Makes the browser render date pickers, selects, checkboxes and
+     scrollbars dark too. Without it those stay white and glare. */
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -35,7 +85,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 32px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px var(--shadow-sm);
 }
 
 h1 { margin: 0 0 4px; font-size: 28px; }
@@ -97,7 +147,7 @@ button:disabled { opacity: 0.6; cursor: default; }
   border: 1px solid var(--accent);
 }
 
-#sign-up-btn:hover, button.secondary:hover { background: rgba(0, 113, 227, 0.08); }
+#sign-up-btn:hover, button.secondary:hover { background: var(--accent-soft); }
 
 .link-btn {
   background: none;
@@ -317,7 +367,7 @@ button:disabled { opacity: 0.6; cursor: default; }
   background: var(--subtle-bg);
 }
 
-.today-task.overdue { background: rgba(215, 0, 21, 0.05); }
+.today-task.overdue { background: var(--danger-soft); }
 
 .today-task > input[type="checkbox"] {
   width: 16px;
@@ -363,7 +413,7 @@ button:disabled { opacity: 0.6; cursor: default; }
   border-radius: 10px;
 }
 
-.task-item.overdue { border-color: rgba(215, 0, 21, 0.45); }
+.task-item.overdue { border-color: var(--danger-line); }
 
 .task-item > input[type="checkbox"] {
   width: 18px;
@@ -399,12 +449,12 @@ button:disabled { opacity: 0.6; cursor: default; }
   white-space: nowrap;
 }
 
-.priority-high { background: #ffe5e5; color: #a30010; }
-.priority-medium { background: #fff2d9; color: #8a5a00; }
-.priority-low { background: #e8f0fe; color: #10529c; }
+.priority-high { background: var(--tint-danger-bg); color: var(--tint-danger-fg); }
+.priority-medium { background: var(--tint-warn-bg); color: var(--tint-warn-fg); }
+.priority-low { background: var(--tint-info-bg); color: var(--tint-info-fg); }
 
 .label-badge {
-  background: #ececf0;
+  background: var(--chip-bg);
   color: var(--muted);
   font-weight: 500;
 }
@@ -440,9 +490,9 @@ button:disabled { opacity: 0.6; cursor: default; }
   font-size: 13px;
 }
 
-.icon-btn:hover { background: rgba(0, 0, 0, 0.05); color: var(--text); }
+.icon-btn:hover { background: var(--hover-soft); color: var(--text); }
 .delete-btn { font-size: 16px; line-height: 1; }
-.delete-btn:hover { background: rgba(215, 0, 21, 0.08); color: var(--danger); }
+.delete-btn:hover { background: var(--danger-soft); color: var(--danger); }
 
 #loading { text-align: center; }
 
@@ -497,12 +547,12 @@ button:disabled { opacity: 0.6; cursor: default; }
   white-space: nowrap;
 }
 
-.section-btn:hover { background: #f0f0f3; color: var(--text); }
+.section-btn:hover { background: var(--chip-bg); color: var(--text); }
 
 .section-btn.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-weight: 600;
 }
 
@@ -584,8 +634,8 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 /* Past 90 minutes the meeting is probably too long to hold attention. */
 .meeting-summary.long {
-  border-color: rgba(215, 0, 21, 0.35);
-  background: rgba(215, 0, 21, 0.04);
+  border-color: var(--danger-line);
+  background: var(--danger-soft);
 }
 
 .meeting-summary.long strong { color: var(--danger); }
@@ -619,7 +669,7 @@ button:disabled { opacity: 0.6; cursor: default; }
   height: 22px;
   border-radius: 50%;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 12px;
   font-weight: 600;
   display: flex;
@@ -634,11 +684,11 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 .agenda-badges { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 
-.time-badge { background: #e8f0fe; color: #10529c; }
-.motion-badge { background: #ede4ff; color: #5b21b6; }
+.time-badge { background: var(--tint-info-bg); color: var(--tint-info-fg); }
+.motion-badge { background: var(--tint-purple-bg); color: var(--tint-purple-fg); }
 /* Amber rather than red: an item waiting a second week is worth noticing,
    but it is not an error. */
-.held-badge { background: #fff2d9; color: #8a5a00; }
+.held-badge { background: var(--tint-warn-bg); color: var(--tint-warn-fg); }
 
 .agenda-description {
   font-size: 13px;
@@ -662,12 +712,12 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 .approve-btn {
   background: var(--success);
-  color: #fff;
+  color: var(--on-accent);
   padding: 5px 12px;
   font-size: 13px;
 }
 
-.approve-btn:hover { background: #15803d; }
+.approve-btn:hover { background: var(--success-hover); }
 
 /* ---- People ---- */
 
@@ -711,8 +761,8 @@ button:disabled { opacity: 0.6; cursor: default; }
   word-break: break-word;
 }
 
-.chair-badge { background: #ede4ff; color: #5b21b6; }
-.admin-badge { background: #ffe9d6; color: #9a4a00; }
+.chair-badge { background: var(--tint-purple-bg); color: var(--tint-purple-fg); }
+.admin-badge { background: var(--tint-warn-bg); color: var(--tint-warn-fg); }
 
 .person-actions {
   display: flex;
@@ -751,12 +801,12 @@ button:disabled { opacity: 0.6; cursor: default; }
 .discuss-btn.done {
   background: var(--success);
   border-color: var(--success);
-  color: #fff;
+  color: var(--on-accent);
 }
 
-.discuss-btn.done:hover { background: #15803d; border-color: #15803d; color: #fff; }
+.discuss-btn.done:hover { background: var(--success-hover); border-color: var(--success-hover); color: var(--on-accent); }
 
-.agenda-item.item-complete { background: rgba(26, 127, 55, 0.04); }
+.agenda-item.item-complete { background: var(--success-soft); }
 .agenda-item.item-complete .task-title { color: var(--muted); }
 
 .minutes-block {
@@ -805,7 +855,7 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 /* ---- Motions ---- */
 
-.motion-row { border-left: 3px solid #5b21b6; }
+.motion-row { border-left: 3px solid var(--tint-purple-fg); }
 .motion-row.outcome-failed { border-left-color: var(--danger); }
 .motion-row.outcome-carried { border-left-color: var(--success); }
 .motion-row.outcome-pending { border-left-color: var(--muted); }
@@ -814,10 +864,10 @@ button:disabled { opacity: 0.6; cursor: default; }
 .motion-result { display: flex; align-items: center; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
 .motion-tally { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
-.outcome-badge.carried { background: #dcf5e3; color: #14532d; }
-.outcome-badge.failed { background: #ffe5e5; color: #a30010; }
-.outcome-badge.pending { background: #ececf0; color: var(--muted); }
-.outcome-badge.tabled, .outcome-badge.withdrawn { background: #fff2d9; color: #8a5a00; }
+.outcome-badge.carried { background: var(--tint-success-bg); color: var(--tint-success-fg); }
+.outcome-badge.failed { background: var(--tint-danger-bg); color: var(--tint-danger-fg); }
+.outcome-badge.pending { background: var(--chip-bg); color: var(--muted); }
+.outcome-badge.tabled, .outcome-badge.withdrawn { background: var(--tint-warn-bg); color: var(--tint-warn-fg); }
 
 .add-motion-btn { margin-top: 4px; font-size: 12px; }
 
@@ -846,7 +896,7 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 /* ---- Completed meetings ---- */
 
-.meeting-summary.completed { border-color: var(--success); background: rgba(26, 127, 55, 0.05); }
+.meeting-summary.completed { border-color: var(--success); background: var(--success-soft); }
 
 .meeting-closed-note {
   font-size: 12px;
@@ -926,9 +976,9 @@ button:disabled { opacity: 0.6; cursor: default; }
 .vote-option:hover { background: var(--subtle-bg); }
 
 .vote-option.selected { font-weight: 600; }
-.vote-option.vote-aye.selected { background: #dcf5e3; border-color: var(--success); color: #14532d; }
-.vote-option.vote-nay.selected { background: #ffe5e5; border-color: var(--danger); color: #a30010; }
-.vote-option.vote-abstain.selected { background: #fff2d9; border-color: #b8860b; color: #8a5a00; }
+.vote-option.vote-aye.selected { background: var(--tint-success-bg); border-color: var(--success); color: var(--tint-success-fg); }
+.vote-option.vote-nay.selected { background: var(--tint-danger-bg); border-color: var(--danger); color: var(--tint-danger-fg); }
+.vote-option.vote-abstain.selected { background: var(--tint-warn-bg); border-color: var(--tint-warn-border); color: var(--tint-warn-fg); }
 
 .vote-option input:disabled { cursor: default; }
 .vote-option input:disabled + span { opacity: 0.8; }
@@ -995,12 +1045,12 @@ button:disabled { opacity: 0.6; cursor: default; }
 }
 
 .attend-option input { width: 13px; height: 13px; cursor: pointer; margin: 0; }
-.attend-option:hover { background: #f0f0f3; }
+.attend-option:hover { background: var(--chip-bg); }
 .attend-option.selected { font-weight: 600; }
-.attend-option.attend-present.selected { background: #dcf5e3; border-color: var(--success); color: #14532d; }
-.attend-option.attend-remote.selected { background: #ddeaff; border-color: #2d8cff; color: #14407a; }
-.attend-option.attend-absent.selected { background: #ffe5e5; border-color: var(--danger); color: #a30010; }
-.attend-option.attend-excused.selected { background: #fff2d9; border-color: #b8860b; color: #8a5a00; }
+.attend-option.attend-present.selected { background: var(--tint-success-bg); border-color: var(--success); color: var(--tint-success-fg); }
+.attend-option.attend-remote.selected { background: var(--tint-info-bg); border-color: var(--brand-zoom); color: var(--tint-info-fg); }
+.attend-option.attend-absent.selected { background: var(--tint-danger-bg); border-color: var(--danger); color: var(--tint-danger-fg); }
+.attend-option.attend-excused.selected { background: var(--tint-warn-bg); border-color: var(--tint-warn-border); color: var(--tint-warn-fg); }
 
 .guest-row .attend-name { font-style: italic; }
 
@@ -1020,7 +1070,7 @@ button:disabled { opacity: 0.6; cursor: default; }
   border-left: 1px solid var(--border);
 }
 
-.reopen-btn:hover { background: rgba(0, 113, 227, 0.08); color: var(--accent); }
+.reopen-btn:hover { background: var(--accent-soft); color: var(--accent); }
 
 .person-seen {
   font-size: 12px;
@@ -1070,13 +1120,13 @@ button:disabled { opacity: 0.6; cursor: default; }
 }
 
 .cal-cell:hover { background: var(--subtle-bg); }
-.cal-cell.outside { background: #fbfbfd; }
+.cal-cell.outside { background: var(--subtle-bg); }
 .cal-cell.outside .cal-daynum { opacity: 0.35; }
 
-.cal-cell.today { background: rgba(0, 113, 227, 0.06); }
+.cal-cell.today { background: var(--accent-soft); }
 .cal-cell.today .cal-daynum {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-radius: 50%;
   width: 20px;
   height: 20px;
@@ -1117,16 +1167,20 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 /* Category colours, following the printed calendar. The three drill types
    stay distinct: how many of each has been run is a compliance question. */
-.cat-holiday        { background: #f5e2b8; color: #6b4c00; }
-.cat-break          { background: #1d2d5c; color: #ffffff; }
-.cat-milestone      { background: #d6e4ff; color: #123a7a; }
-.cat-fire-drill     { background: #ffd9d9; color: #9c1010; }
-.cat-tornado-drill  { background: #cfe4fb; color: #10529c; }
-.cat-lockdown-drill { background: #ffe0c2; color: #8a4b00; }
-.cat-partnership    { background: #1f5136; color: #ffffff; }
-.cat-observation    { background: #e8ddff; color: #4a2b8f; }
-.cat-personnel      { background: #d9f0ee; color: #0f5f59; }
-.cat-other          { background: #ececf0; color: #4a4a4f; }
+.cat-holiday        { background: rgba(245, 194, 66, 0.18);  color: #f0cc7a; }
+.cat-break          { background: rgba(99, 130, 230, 0.22);  color: #a9bdf5; }
+.cat-milestone      { background: rgba(76, 158, 255, 0.18);  color: #9fc8ff; }
+.cat-fire-drill     { background: rgba(255, 107, 107, 0.18); color: #ff9f9f; }
+.cat-tornado-drill  { background: rgba(120, 180, 255, 0.18); color: #a8cdff; }
+.cat-lockdown-drill { background: rgba(255, 150, 60, 0.18);  color: #f5b073; }
+.cat-partnership    { background: rgba(74, 222, 128, 0.18);  color: #8fe8ab; }
+.cat-observation    { background: rgba(167, 139, 250, 0.20); color: #c7b6fd; }
+.cat-personnel      { background: rgba(45, 212, 191, 0.18);  color: #7fe0d4; }
+.cat-other          { background: var(--chip-bg);            color: var(--muted); }
+
+/* The filter dots reuse the .cat-* classes, and a 0.18 wash would barely
+   show at 8px. currentColor gives them the solid version of the same hue. */
+.legend-dot { background: currentColor; }
 
 .cal-filters {
   display: flex;
@@ -1281,8 +1335,8 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 .zoom-btn {
   display: inline-block;
-  background: #2d8cff;
-  color: #fff;
+  background: var(--brand-zoom);
+  color: var(--on-accent);
   font-size: 13px;
   font-weight: 600;
   padding: 6px 14px;
@@ -1291,7 +1345,7 @@ button:disabled { opacity: 0.6; cursor: default; }
   margin-bottom: 4px;
 }
 
-.zoom-btn:hover { background: #1a7ae8; color: #fff; }
+.zoom-btn:hover { background: var(--brand-zoom-hover); color: var(--on-accent); }
 
 .zoom-form {
   border: 1px solid var(--border);
@@ -1310,10 +1364,10 @@ button:disabled { opacity: 0.6; cursor: default; }
 }
 
 .zoom-links { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
-.zoom-btn.concordis { background: #5b47b8; }
-.zoom-btn.concordis:hover { background: #4b39a0; }
-.zoom-btn.drive { background: #188038; }
-.zoom-btn.drive:hover { background: #12692d; }
+.zoom-btn.concordis { background: var(--brand-concordis); }
+.zoom-btn.concordis:hover { background: var(--brand-concordis-hover); }
+.zoom-btn.drive { background: var(--brand-drive); }
+.zoom-btn.drive:hover { background: var(--brand-drive-hover); }
 
 /* Sits at the foot of the People page: reference, not the main content. */
 .zoom-form { margin-top: 24px; margin-bottom: 0; }
@@ -1340,7 +1394,7 @@ button:disabled { opacity: 0.6; cursor: default; }
   border: 1.5px solid var(--border);
 }
 
-.skip-btn:hover { background: #fff2d9; border-color: #b8860b; color: #8a5a00; }
+.skip-btn:hover { background: var(--tint-warn-bg); border-color: var(--tint-warn-border); color: var(--tint-warn-fg); }
 
 .make-task-btn {
   flex-shrink: 0;
@@ -1353,7 +1407,7 @@ button:disabled { opacity: 0.6; cursor: default; }
   border: 1.5px solid var(--border);
 }
 
-.make-task-btn:hover { background: #e8f0fe; border-color: #10529c; color: #10529c; }
+.make-task-btn:hover { background: var(--tint-info-bg); border-color: var(--tint-info-fg); color: var(--tint-info-fg); }
 
 /* On a closed meeting this is the only button in the row, so let it fill the
    width rather than sit as a stub against the left edge. */
@@ -1370,7 +1424,7 @@ button:disabled { opacity: 0.6; cursor: default; }
   justify-content: center;
   padding: 24px 16px;
   overflow-y: auto;
-  background: rgba(20, 22, 28, 0.45);
+  background: var(--overlay);
 }
 
 .modal-card {
@@ -1385,7 +1439,7 @@ button:disabled { opacity: 0.6; cursor: default; }
   background: var(--card-bg);
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 18px 50px var(--shadow-lg);
   max-height: none;
 }
 
@@ -1422,7 +1476,7 @@ button:disabled { opacity: 0.6; cursor: default; }
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 14px 40px var(--shadow-md);
   padding: 6px;
 }
 
@@ -1449,10 +1503,10 @@ button:disabled { opacity: 0.6; cursor: default; }
 }
 
 .search-hit-btn:hover,
-.search-hit-btn.active { background: #e8f0fe; }
+.search-hit-btn.active { background: var(--tint-info-bg); }
 
 .search-hit-title { display: block; font-size: 14px; font-weight: 600; }
-.search-hit-title strong { background: #fff2a8; border-radius: 2px; }
+.search-hit-title strong { background: var(--highlight-bg); border-radius: 2px; }
 
 .search-hit-context {
   display: block;
@@ -1465,7 +1519,7 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 /* The matched term is what you are scanning for, so it gets both weight and
    a highlight — bold alone is easy to miss in a dense list. */
-.search-hit-context strong { color: var(--text); background: #fff2a8; border-radius: 2px; }
+.search-hit-context strong { color: var(--text); background: var(--highlight-bg); border-radius: 2px; }
 
 .search-hit-meta { display: block; margin-top: 3px; font-size: 11px; color: var(--muted); }
 
@@ -1475,9 +1529,32 @@ button:disabled { opacity: 0.6; cursor: default; }
 .search-landed { animation: search-landed 2.6s ease-out; }
 
 @keyframes search-landed {
-  0%, 30% { box-shadow: 0 0 0 3px var(--accent); background-color: #e8f0fe; }
+  0%, 30% { box-shadow: 0 0 0 3px var(--accent); background-color: var(--tint-info-bg); }
   100% { box-shadow: 0 0 0 3px transparent; }
 }
+
+/* ---- Editing a note in place ---- */
+
+.minute-note.editing { display: block; }
+
+.note-edit { display: block; width: 100%; }
+
+.note-edit-box {
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--card-bg);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  resize: vertical;
+}
+
+.note-edit-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.note-edit-actions button { font-size: 13px; padding: 7px 14px; }
 
 /* ---- Reordering the agenda by dragging ---- */
 
@@ -1503,7 +1580,7 @@ button:disabled { opacity: 0.6; cursor: default; }
   cursor: grabbing;
   opacity: 0.9;
   border-color: var(--accent);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 10px 28px var(--shadow-md);
 }
 
 /* Stops the agenda text being selected as the pointer sweeps over it. */
@@ -1530,7 +1607,7 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 #meeting-jump-wrap input[type="date"] { width: auto; margin: 0; }
 
-.repeat-badge { background: #e6f4ea; color: #146c2e; }
+.repeat-badge { background: var(--tint-success-bg); color: var(--tint-success-fg); }
 
 /* ---- School countdown ---- */
 
@@ -1545,8 +1622,8 @@ button:disabled { opacity: 0.6; cursor: default; }
   background: var(--subtle-bg);
 }
 
-.school-countdown.in-session { background: #e8f0fe; border-color: #b9d0f7; }
-.school-countdown.out-of-session { background: #fff7e6; border-color: #f0d9a8; }
+.school-countdown.in-session { background: var(--tint-info-bg); border-color: var(--tint-info-border); }
+.school-countdown.out-of-session { background: var(--tint-warn-bg); border-color: var(--tint-warn-border); }
 
 .countdown-figure {
   display: flex;
@@ -1570,7 +1647,7 @@ button:disabled { opacity: 0.6; cursor: default; }
   background: var(--card-bg);
   border-radius: 12px;
   padding: 22px;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 18px 50px var(--shadow-lg);
 }
 
 .confirm-card h2 { margin: 0 0 10px; font-size: 18px; }
@@ -1593,11 +1670,11 @@ button:disabled { opacity: 0.6; cursor: default; }
 
 .danger-btn {
   background: var(--danger);
-  color: #fff;
+  color: var(--on-accent);
   border: 1.5px solid var(--danger);
 }
 
-.danger-btn:hover { background: #a30010; border-color: #a30010; }
+.danger-btn:hover { background: var(--danger-hover); border-color: var(--danger-hover); }
 
 .today-task-actions {
   display: flex;
@@ -1618,17 +1695,17 @@ li.meeting-clock { display: block; list-style: none; }
   border-radius: 5px;
   overflow: hidden;
   margin-top: 10px;
-  background: #ececf0;
+  background: var(--chip-bg);
 }
 
 .clock-seg {
   height: 100%;
-  background: #dde3ee;
+  background: var(--chip-bg);
   border-right: 1px solid var(--card-bg);
 }
 
 .clock-seg:last-child { border-right: none; }
-.clock-seg.done { background: #bcd9c6; }
+.clock-seg.done { background: var(--tint-success-bg); }
 .clock-seg.current { background: var(--accent); }
 
 .clock-marker {

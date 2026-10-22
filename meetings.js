@@ -267,7 +267,7 @@ async function loadAgenda() {
   await loadHeldOver();
   await loadAttendance(meetingDate);
   await loadMinutes(agendaItems.filter((i) => i.status === "approved").map((i) => i.id));
-  renderMeetings();
+  keepingScrollPosition(renderMeetings);
 }
 
 // Only gathered while looking at the next meeting still ahead. Paging back

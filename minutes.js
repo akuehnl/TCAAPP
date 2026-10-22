@@ -169,14 +169,94 @@ async function addNote(itemId, body) {
   await loadAgenda();
 }
 
-async function editNote(note) {
-  const body = prompt("Edit this note:", note.body);
-  if (body === null || !body.trim()) return;
+// ---- Editing a note ----
+//
+// Edited in place in a full-width box, not a prompt(): minutes run to several
+// sentences, and a browser prompt gives you a one-line field with no wrapping
+// to correct them in. Held in the same shape as the draft of a new note, so
+// the agenda re-rendering underneath — which it does whenever anyone adds a
+// note or casts a vote — cannot throw away what you have typed.
 
-  const { error } = await supabaseClient
-    .from("agenda_notes").update({ body: body.trim() }).eq("id", note.id);
-  if (error) console.error(error);
+let editingNoteId = null;
+const noteEdits = new Map();   // note id -> text as currently edited
+
+function startEditNote(note) {
+  editingNoteId = note.id;
+  if (!noteEdits.has(note.id)) noteEdits.set(note.id, note.body);
+  keepingScrollPosition(renderMeetings);
+
+  const box = document.querySelector(`[data-note-edit="${note.id}"]`);
+  if (box) {
+    box.focus();
+    box.setSelectionRange(box.value.length, box.value.length);
+  }
+}
+
+function cancelEditNote(noteId) {
+  editingNoteId = null;
+  noteEdits.delete(noteId);
+  keepingScrollPosition(renderMeetings);
+}
+
+async function saveEditNote(note) {
+  const body = (noteEdits.get(note.id) ?? "").trim();
+  // An empty box is a mistake rather than an instruction to blank the record;
+  // deleting a note is its own button.
+  if (!body) return;
+
+  editingNoteId = null;
+  noteEdits.delete(note.id);
+
+  if (body !== note.body) {
+    const { error } = await supabaseClient
+      .from("agenda_notes").update({ body }).eq("id", note.id);
+    if (error) console.error(error);
+  }
   await loadAgenda();
+}
+
+function buildNoteEditor(note) {
+  const form = document.createElement("form");
+  form.className = "note-edit";
+
+  const box = document.createElement("textarea");
+  box.className = "note-edit-box";
+  box.dataset.noteEdit = note.id;
+  box.value = noteEdits.get(note.id) ?? note.body;
+  // Tall enough for what is already there, so a long note is not edited
+  // through a two-line slot.
+  box.rows = Math.min(12, Math.max(3, box.value.split("\n").length + 1));
+  box.addEventListener("input", () => noteEdits.set(note.id, box.value));
+  box.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      form.requestSubmit();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      cancelEditNote(note.id);
+    }
+  });
+
+  const save = document.createElement("button");
+  save.type = "submit";
+  save.textContent = "Save";
+
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.className = "secondary";
+  cancel.textContent = "Cancel";
+  cancel.addEventListener("click", () => cancelEditNote(note.id));
+
+  const actions = document.createElement("div");
+  actions.className = "note-edit-actions";
+  actions.append(save, cancel);
+
+  form.append(box, actions);
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    saveEditNote(note);
+  });
+  return form;
 }
 
 async function deleteNote(noteId) {
@@ -273,6 +353,12 @@ function renderNote(note, readOnly) {
   const li = document.createElement("li");
   li.className = "minute-note";
 
+  if (!readOnly && editingNoteId === note.id && canEditNote(note)) {
+    li.classList.add("editing");
+    li.appendChild(buildNoteEditor(note));
+    return li;
+  }
+
   const body = document.createElement("div");
   body.className = "minute-body";
   body.textContent = note.body;
@@ -291,7 +377,7 @@ function renderNote(note, readOnly) {
     const actions = document.createElement("div");
     actions.className = "minute-actions";
     actions.append(
-      miniButton("Edit", () => editNote(note)),
+      miniButton("Edit", () => startEditNote(note)),
       miniButton("✕", () => deleteNote(note.id), "icon-btn delete-btn")
     );
     li.appendChild(actions);
@@ -448,7 +534,7 @@ function renderMotion(motion, readOnly) {
       miniButton("Edit", () => {
         openMotionForm = motion.agenda_item_id;
         editingMotionId = motion.id;
-        renderMeetings();
+        keepingScrollPosition(renderMeetings);
       }),
       miniButton("✕", () => deleteMotion(motion.id), "icon-btn delete-btn")
     );
@@ -514,7 +600,7 @@ function buildMotionForm(itemId) {
   cancel.addEventListener("click", () => {
     openMotionForm = null;
     editingMotionId = null;
-    renderMeetings();
+    keepingScrollPosition(renderMeetings);
   });
 
   const message = document.createElement("span");
@@ -662,7 +748,7 @@ function buildMinutesBlock(item, readOnly) {
       block.appendChild(miniButton("+ Record a motion", () => {
         openMotionForm = item.id;
         editingMotionId = null;
-        renderMeetings();
+        keepingScrollPosition(renderMeetings);
       }, "icon-btn add-motion-btn"));
     }
   }

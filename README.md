@@ -15,6 +15,16 @@ Two sections, switched from the top of the page:
 | **People** | The roster — who's active, who chairs the board, who administers it |
 | **Calendar** | The school year: holidays, breaks, milestones, safety drills, Parent Partnership days and the observation schedule |
 
+## Theme
+
+Dark. Every colour in the stylesheet is a token defined once at the top of
+[`style.css`](style.css), so the whole palette is those few lines — tinted
+chips are a wash of their hue with a light version of the same hue for text,
+rather than the pale fill and dark text they were, which on a dark ground
+reads as a hole punched in the page. `color-scheme: dark` is set so the
+browser's own date pickers, selects, checkboxes and scrollbars follow;
+without it those stay white and glare.
+
 ## Task views
 
 | View | Shows |
@@ -316,6 +326,13 @@ During the meeting, each approved item carries its own minutes block:
   row with its own author, not a shared document. There is no draft or submit
   step — a note is part of the record the moment it is added, which is also
   why nothing can be lost by forgetting to publish it.
+
+  Notes are **edited in place in a full-width box**, not a browser prompt:
+  minutes run to several sentences and a prompt gives you a one-line field to
+  correct them in. The box is held in the same shape as a half-typed new note,
+  so the agenda re-rendering underneath — which it does whenever anyone adds a
+  note or casts a vote — cannot throw away what you have typed. Ctrl+Enter
+  saves, Escape cancels.
 
   **Ctrl+Enter** (Cmd+Enter on a Mac) adds a note without reaching for the
   button, and the cursor lands straight in the empty box ready for the next

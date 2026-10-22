@@ -100,6 +100,22 @@ function showScreen(screen) {
   screen.classList.remove("hidden");
 }
 
+// Re-rendering rebuilds whole lists, and a shorter list means the browser
+// clamps the scroll position — so recording a vote halfway down a long agenda
+// threw the page back toward the top. Every reload-then-redraw path goes
+// through this, which puts the offset back and leaves the button you just
+// pressed where your finger already is.
+function keepingScrollPosition(render) {
+  const y = window.scrollY;
+  render();
+  if (window.scrollY !== y) window.scrollTo(0, y);
+  // Once more after layout settles: a block that measures itself, or a row
+  // that grew, can change the page height after the synchronous pass.
+  requestAnimationFrame(() => {
+    if (window.scrollY !== y) window.scrollTo(0, y);
+  });
+}
+
 function setMessage(el, text, type) {
   el.textContent = text || "";
   el.className = "message" + (type ? " " + type : "");
@@ -552,8 +568,11 @@ function openTaskModal(prefill = {}) {
   taskModalCard.appendChild(taskForm);
   taskModal.classList.remove("hidden");
   formHeading.textContent = "New task";
+  // Caret at the end rather than selecting the prefilled title: with the text
+  // selected, the first Backspace wiped the whole thing instead of deleting
+  // one character, which reads as the dialog throwing your work away.
   fTitle.focus();
-  fTitle.select();
+  fTitle.setSelectionRange(fTitle.value.length, fTitle.value.length);
 }
 
 function closeTaskModal() {
@@ -702,7 +721,7 @@ async function loadTasks() {
   }
   tasks = data;
   await loadCompletions();
-  render();
+  keepingScrollPosition(render);
   refreshLabelOptions();
 }
 
