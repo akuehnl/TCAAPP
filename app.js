@@ -134,15 +134,43 @@ async function handleSignIn() {
 
 async function handleSignUp() {
   setMessage(authMessage, "Creating account…");
-  const { error } = await supabaseClient.auth.signUp({
+  const { data, error } = await supabaseClient.auth.signUp({
     email: emailInput.value.trim(),
     password: passwordInput.value,
   });
+
   if (error) {
     setMessage(authMessage, error.message, "error");
-  } else {
-    setMessage(authMessage, "Account created. Check your email if confirmation is required, then sign in.", "success");
+    return;
   }
+
+  // Setting a password signs you straight in, and that very first session is
+  // the one that lands on an error screen — signing out and back in is what
+  // people found themselves doing to get past it. So do it for them: drop the
+  // session and ask for a normal sign-in, which is the path that works.
+  if (data?.session) {
+    await supabaseClient.auth.signOut();
+    passwordInput.value = "";
+    showScreen(authScreen);
+    setMessage(authMessage, "Account created. Now sign in with your new password.", "success");
+    return;
+  }
+
+  setMessage(authMessage, "Account created. Check your email to confirm, then sign in.", "success");
+}
+
+// The hash Supabase leaves behind after a confirmation, invite or
+// password-reset link: "#access_token=…&type=signup", or "#error=…" when the
+// link has expired or been used already. Distinguished from the app's own
+// routes, which all begin "#/".
+function authCallbackInHash() {
+  const hash = location.hash.slice(1);
+  if (!hash || hash.startsWith("/")) return null;
+
+  const params = new URLSearchParams(hash);
+  const message = params.get("error_description") || params.get("error");
+  if (!message && !params.get("access_token")) return null;
+  return { message, type: params.get("type") };
 }
 
 authForm.addEventListener("submit", (e) => {
@@ -1475,7 +1503,16 @@ function exitApp() {
 // into meetings.js, a separate script that has not been evaluated while this
 // file is still running — starting any earlier races it.
 document.addEventListener("DOMContentLoaded", () => {
+  // Read before anything else: supabase-js strips this hash as it starts up.
+  const authCallback = authCallbackInHash();
+  let callbackPending = authCallback !== null;
+
   supabaseClient.auth.onAuthStateChange((_event, session) => {
+    // The session minted by a confirmation or invite link is deliberately not
+    // used — init() below signs it out and asks for a sign-in — so entering
+    // the app on it would only flash the screen people were complaining about.
+    if (callbackPending) return;
+
     if (!session) {
       signedInUserId = null;
       exitApp();
@@ -1496,6 +1533,24 @@ document.addEventListener("DOMContentLoaded", () => {
   // fall back to the sign-in screen rather than a dead end.
   (async function init() {
     try {
+      if (authCallback) {
+        // Clear the tokens out of the address bar before anything else, so a
+        // reload or a shared link cannot replay them.
+        history.replaceState(null, "", location.pathname + location.search);
+        await supabaseClient.auth.signOut();
+        callbackPending = false;
+
+        showScreen(authScreen);
+        setMessage(
+          authMessage,
+          authCallback.message
+            ? `${authCallback.message} — sign in below, or ask for a new link.`
+            : "Your account is ready. Sign in with your password.",
+          authCallback.message ? "error" : "success"
+        );
+        return;
+      }
+
       const { data: { session }, error } = await supabaseClient.auth.getSession();
       if (error) throw error;
       if (session) {

@@ -492,7 +492,18 @@ whether or not they've created a login yet.
 | Josiah Warner | Board Chair | Limited — decision-making, culture, enrollment, hiring |
 | Ethan Nelson | Secretary | Limited — vendor contracts (signage, security cameras) |
 | Joe Martinez | Board Oversight | Limited — retired; errands, supply runs, church outreach, theology |
+| Tom Boyd | — | Full member — login, assignable, votes |
 | Concordis | Outside partner | Assignable only — no login, no vote |
+
+**Setting a password signs you out again on purpose.** Supabase hands back a
+session the moment an account is created, and that first session is the one
+that lands on an error screen — signing out and back in was the workaround
+people found for themselves. The app now does it for them: the session is
+dropped and the normal sign-in form appears saying "Account created. Now sign
+in with your new password." The same applies to arriving from a confirmation
+or invite link; the tokens are cleared from the address bar first, so a reload
+or a forwarded link cannot replay them. An expired link says so and offers the
+sign-in form rather than failing silently.
 
 An account is linked to its roster row automatically at signup by matching
 email address. **Signing up with an address that isn't on the roster gets you
@@ -581,7 +592,9 @@ Run these in the Supabase SQL Editor **in order**, once each:
     saves a dragged agenda order in one call.
 31. [`supabase/migration-028-assignees-without-accounts.sql`](supabase/migration-028-assignees-without-accounts.sql) —
     adds Concordis, and keeps account-less assignees out of votes and shared tasks.
-32. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
+32. [`supabase/migration-029-add-tom-boyd.sql`](supabase/migration-029-add-tom-boyd.sql) —
+    adds Tom Boyd as a full voting member.
+33. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
     loads the recorded staff absences.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key
