@@ -14,16 +14,22 @@
 -- which is everything except that. One toggle on the People page grants it if
 -- that was meant.
 --
+-- The address is suddenlink.NET. An earlier version of this file had .com,
+-- which would stop the signup from ever matching his roster row — the link is
+-- made by comparing the two addresses. Re-running this corrects a row already
+-- created with the wrong one: the conflict branch below rewrites the email and
+-- picks up his login if he has since signed up.
+--
 -- Run in the Supabase SQL Editor. Safe to re-run.
 
 insert into public.members
   (name, full_name, email, role, bandwidth, daily_capacity_hours,
    user_id, is_active, is_chair, is_admin, can_vote, sort_order)
 values
-  ('Tom', 'Tom Boyd', 'tbb5@suddenlink.com', null, 'limited', 1,
+  ('Tom', 'Tom Boyd', 'tbb5@suddenlink.net', null, 'limited', 1,
    -- Linked now if he has already signed up: the trigger that normally does
    -- this fires when the login is created, and will never fire again for him.
-   (select id from auth.users where lower(email) = 'tbb5@suddenlink.com' limit 1),
+   (select id from auth.users where lower(email) = 'tbb5@suddenlink.net' limit 1),
    true, false, false, true,
    coalesce((select max(sort_order) from public.members), 0) + 1)
 on conflict (name) do update set
