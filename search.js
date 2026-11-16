@@ -128,7 +128,7 @@ async function searchMeetings(term) {
   const pattern = likePattern(term);
   const itemCols = "id, title, meeting_date, status";
 
-  const [notesRes, motionsRes, titleRes, descRes] = await Promise.all([
+  const [notesRes, motionsRes, titleRes, descRes, meetingNotesRes] = await Promise.all([
     supabaseClient.from("agenda_notes")
       .select(`id, body, author_id, agenda_items(${itemCols})`)
       .ilike("body", pattern).order("inserted_at", { ascending: false }).limit(MAX_MEETING_HITS),
@@ -143,9 +143,15 @@ async function searchMeetings(term) {
     supabaseClient.from("agenda_items")
       .select(`${itemCols}, description`)
       .ilike("description", pattern).limit(MAX_MEETING_HITS),
+    // Meeting-level write-ups: an AI summary is often the only place a
+    // decision is written down in full, so it has to be searchable.
+    supabaseClient.from("meeting_notes")
+      .select("id, label, body, meeting_date, author_id")
+      .ilike("body", pattern)
+      .order("meeting_date", { ascending: false }).limit(MAX_MEETING_HITS),
   ]);
 
-  for (const res of [notesRes, motionsRes, titleRes, descRes]) {
+  for (const res of [notesRes, motionsRes, titleRes, descRes, meetingNotesRes]) {
     if (res.error) console.error(res.error);
   }
 
@@ -190,8 +196,21 @@ async function searchMeetings(term) {
     });
   }
 
+  for (const note of meetingNotesRes.data ?? []) {
+    if (!containsTerm(note.body, term)) continue;
+    hits.push({
+      kind: "meetingNote",
+      note,
+      meeting_date: note.meeting_date,
+      title: note.label || "Meeting notes",
+      context: note.body,
+      meta: `Meeting notes · ${shortMeetingDate(note.meeting_date)} · ${memberName(note.author_id)}`,
+    });
+  }
+
   // Newest meeting first — the recent discussion is usually the one you want.
-  hits.sort((a, b) => (a.item.meeting_date < b.item.meeting_date ? 1 : -1));
+  const dateOf = (hit) => hit.meeting_date ?? hit.item.meeting_date;
+  hits.sort((a, b) => (dateOf(a) < dateOf(b) ? 1 : -1));
   return hits.slice(0, MAX_MEETING_HITS);
 }
 
@@ -351,7 +370,31 @@ async function openHit(hit) {
   hideSearchResults();
   searchInput.blur();
   if (hit.kind === "task") await openTaskHit(hit.task);
+  else if (hit.kind === "meetingNote") await openMeetingNoteHit(hit.note);
   else await openMeetingHit(hit.item);
+}
+
+// Meeting notes hang off the meeting rather than an agenda item, so this
+// opens the meeting and expands the entry that matched — they are collapsed
+// by default, and landing on a closed box would look like nothing happened.
+async function openMeetingNoteHit(note) {
+  const { data: meeting, error } = await supabaseClient
+    .from("meetings").select("status").eq("meeting_date", note.meeting_date).maybeSingle();
+  if (error) console.error(error);
+
+  expandedMeetingNotes.add(note.id);
+  setSection("meetings");
+
+  if (meeting?.status === "completed") {
+    expandedMeetings.add(note.meeting_date);
+    setMeetingSubView("completed");
+  } else {
+    meetingDate = note.meeting_date;
+    await loadAgenda();
+    setMeetingSubView("agenda");
+  }
+
+  landOn(await waitForElement(`[data-mnote="${CSS.escape(note.id)}"]`));
 }
 
 async function openTaskHit(task) {

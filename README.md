@@ -232,6 +232,35 @@ the books** if there is one, rather than to whatever date the Tuesday
 arithmetic produces — so business carried out of a meeting lands on the
 rescheduled Wednesday rather than beside it.
 
+### Meeting notes
+
+Separate from the minutes under each agenda item: these hang off the **meeting
+itself** — an AI summary pasted in afterwards, a write-up, follow-ups that span
+the whole evening. Several per meeting, each with its own label, shown at the
+top of the meeting page and inside the expanded meeting in the archive.
+
+**A closed meeting still takes them.** Nothing here is gated on the meeting
+being open, because adding a summary to a meeting that finished a fortnight
+ago is the entire point. Drop notes onto any past date without reopening it.
+
+Markdown is rendered — headings, bullets, numbered lists, quotes, bold,
+italic, code and links — so pasted AI output reads the way it did in the chat
+window. The renderer builds DOM nodes rather than assembling HTML, so pasted
+text reaches the page only as `textContent` or as an element the code created;
+markup in a summary can never run, and a link href that is not plainly `http`
+or `https` is left as plain text. It is about a hundred lines in
+[`meeting-notes.js`](meeting-notes.js) rather than a library, which keeps the
+dependency count at zero and the behaviour predictable.
+
+Entries are **collapsed by default** — a pasted summary runs to pages, and
+expanded it would push the agenda off the screen mid-meeting. Anyone on the
+roster can add; authors fix their own, the chair or an admin fixes anyone's.
+Half-typed entries survive a reload the same way agenda minutes do.
+
+They are covered by the search box, listed under Board meetings with the
+matched phrase in context; opening one expands that entry so you land on the
+text rather than a closed box.
+
 ### Reordering the agenda
 
 Approved items carry a **drag handle** (chair or admin, while the meeting is
@@ -594,7 +623,9 @@ Run these in the Supabase SQL Editor **in order**, once each:
     adds Concordis, and keeps account-less assignees out of votes and shared tasks.
 32. [`supabase/migration-029-add-tom-boyd.sql`](supabase/migration-029-add-tom-boyd.sql) —
     adds Tom Boyd as a full voting member.
-33. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
+33. [`supabase/migration-030-meeting-notes.sql`](supabase/migration-030-meeting-notes.sql) —
+    adds free-form notes attached to a meeting, and moves them when one is rescheduled.
+34. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
     loads the recorded staff absences.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key

@@ -155,6 +155,10 @@ function setMeetingSubView(view) {
   // The date stepper and per-meeting controls make no sense in the archive.
   meetingToolbar.classList.toggle("hidden", view === "completed");
   syncRoute();
+  // Explicitly, because the archive branch below does not go through
+  // renderMeetings() — and that is the branch where this block has to
+  // disappear, since each archived meeting renders its own.
+  renderMeetingNotesHost();
   if (view === "completed") loadCompletedMeetings();
   else renderMeetings();
 }
@@ -267,6 +271,7 @@ async function loadAgenda() {
   await loadHeldOver();
   await loadAttendance(meetingDate);
   await loadMinutes(agendaItems.filter((i) => i.status === "approved").map((i) => i.id));
+  await loadMeetingNotes(meetingDate);
   keepingScrollPosition(renderMeetings);
 }
 
@@ -914,12 +919,16 @@ async function loadArchivedMeeting(date) {
   const att = await supabaseClient.from("meeting_attendance").select("*")
     .eq("meeting_date", date).order("inserted_at");
 
-  const compiled = { items, notes, motions, votes, attendance: att.data ?? [] };
+  const compiled = {
+    items, notes, motions, votes,
+    attendance: att.data ?? [],
+    meetingNotes: await fetchMeetingNotes(date),
+  };
   archiveCache.set(date, compiled);
   return compiled;
 }
 
-function renderArchivedMeeting(container, compiled) {
+function renderArchivedMeeting(container, compiled, date) {
   // Reuse the live minutes renderer by pointing the shared maps at this
   // meeting. Safe because the archive is read-only and re-rendering the live
   // agenda reloads them.
@@ -940,6 +949,10 @@ function renderArchivedMeeting(container, compiled) {
   }
 
   container.innerHTML = "";
+
+  // Still editable in the archive, unlike everything else here: adding a
+  // summary to a meeting that has already finished is the point of them.
+  container.appendChild(buildMeetingNotesBlock(date, compiled.meetingNotes ?? []));
 
   // Point the shared attendance state at this meeting for the same reason as
   // the notes and motions above: reuse the live renderer, read-only.
@@ -991,7 +1004,7 @@ function renderArchivedMeeting(container, compiled) {
 async function expandArchived(date) {
   const compiled = await loadArchivedMeeting(date);
   const target = document.querySelector('[data-archive="' + date + '"]');
-  if (target) renderArchivedMeeting(target, compiled);
+  if (target) renderArchivedMeeting(target, compiled, date);
 }
 
 function renderCompletedMeetings() {
@@ -1341,6 +1354,7 @@ function renderMeetings() {
   );
   startMeetingBtn.textContent = started ? "Reset clock" : "Start meeting";
 
+  renderMeetingNotesHost();
   meetingJump.value = meetingDate;
   // Moving a closed meeting would drag its minutes to a date the archive has
   // already filed them under, so it is offered only while one is still open.
@@ -1396,6 +1410,9 @@ function subscribeToAgenda() {
     .on("postgres_changes", { event: "*", schema: "public", table: "agenda_items" }, () => {
       // Re-rendering mid-drag would delete the row being dragged and leave the
       // pointer holding nothing. The drag reloads the agenda when it ends.
+      if (!isDraggingAgenda) loadAgenda();
+    })
+    .on("postgres_changes", { event: "*", schema: "public", table: "meeting_notes" }, () => {
       if (!isDraggingAgenda) loadAgenda();
     })
     .subscribe();

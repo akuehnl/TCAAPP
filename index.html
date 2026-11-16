@@ -235,6 +235,12 @@
 
       <!-- Moving a meeting carries its agenda, minutes and attendance with it,
            so it asks rather than doing it on one click of a date picker. -->
+      <!-- Meeting-level notes: an AI summary or write-up for the evening as a
+           whole, as opposed to the minutes under each agenda item. Sits
+           outside the tab views so it shows on Suggestions and the agenda
+           alike; the archive renders its own copy inside each meeting. -->
+      <div id="meeting-notes-host"></div>
+
       <div id="reschedule-panel" class="reschedule-panel hidden">
         <label for="reschedule-date">Move this meeting to</label>
         <input type="date" id="reschedule-date" />
@@ -514,6 +520,7 @@
 <script src="app.js"></script>
 <script src="meetings.js"></script>
 <script src="minutes.js"></script>
+<script src="meeting-notes.js"></script>
 <script src="people.js"></script>
 <script src="calendar.js"></script>
 <script src="search.js"></script>
