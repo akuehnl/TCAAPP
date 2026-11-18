@@ -261,6 +261,33 @@ They are covered by the search box, listed under Board meetings with the
 matched phrase in context; opening one expands that entry so you land on the
 text rather than a closed box.
 
+### Correcting a closed meeting
+
+Items used to travel in one direction only — carried forward automatically
+when a meeting was closed — and an archived meeting was read-only throughout.
+So a meeting closed with something mismarked could only be put right with
+hand-written SQL.
+
+Two controls fix that, and between them mean the SQL is never needed:
+
+- **Move…** on any approved item opens a date picker and sends the item to
+  another meeting, *including an earlier one*. Backwards is the direction that
+  matters: an item discussed on the 17th but carried to the 24th by mistake
+  has to go back to the meeting it was actually discussed at, or the archive
+  records the wrong evening. Chair or admin, enforced in the database as well
+  as hidden in the UI. The item takes its minutes, motions and votes with it,
+  since those hang off the item rather than the date.
+- **Mark as discussed** now appears under each item in the archive too, so a
+  closed meeting can be corrected without reopening it. The minutes themselves
+  stay read-only there; only the discussed flag and the meeting an item
+  belongs to can be changed, because those are the two things that get
+  recorded wrong and noticed later.
+
+The prompt shown when a meeting is closed **names** the unfinished items
+rather than only counting them. "3 items are not marked discussed" gave no way
+to notice that two of the three had in fact been covered, which is exactly how
+a meeting ends up carrying forward work it already did.
+
 ### Reordering the agenda
 
 Approved items carry a **drag handle** (chair or admin, while the meeting is
@@ -625,7 +652,9 @@ Run these in the Supabase SQL Editor **in order**, once each:
     adds Tom Boyd as a full voting member.
 33. [`supabase/migration-030-meeting-notes.sql`](supabase/migration-030-meeting-notes.sql) —
     adds free-form notes attached to a meeting, and moves them when one is rescheduled.
-34. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
+34. [`supabase/migration-031-move-agenda-item.sql`](supabase/migration-031-move-agenda-item.sql) —
+    moves a single agenda item to another meeting, including an earlier one.
+35. [`supabase/seed-003-personnel.sql`](supabase/seed-003-personnel.sql) —
     loads the recorded staff absences.
 
 Then in **Project Settings → API**, copy the Project URL and anon public key

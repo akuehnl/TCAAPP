@@ -314,12 +314,24 @@ async function clearVote(motionId, memberId) {
   await loadAgenda();
 }
 
-async function toggleItemComplete(itemId, complete) {
+// `archivedDate` is passed when the toggle was pressed inside an expanded
+// meeting in the archive, which has its own renderer — reloading the live
+// agenda there would redraw a meeting that is not on screen.
+async function toggleItemComplete(itemId, complete, archivedDate) {
   const { error } = await supabaseClient.rpc("set_agenda_item_complete", {
     item: itemId,
     complete,
   });
-  if (error) console.error(error);
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  if (archivedDate && currentSection === "meetings" && meetingSubView === "completed") {
+    archiveCache.delete(archivedDate);
+    await expandArchived(archivedDate);
+    return;
+  }
   await loadAgenda();
 }
 

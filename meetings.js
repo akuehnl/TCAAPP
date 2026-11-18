@@ -367,6 +367,103 @@ async function returnToSuggestions(id) {
 
 // Rewrite sort_order across the whole approved list so it stays 0..n-1 with
 // no gaps, rather than swapping pairs and slowly drifting.
+// ---- Moving an item to another meeting ----
+//
+// The direction that matters is backwards. Items have only ever travelled
+// forwards, carried automatically when a meeting is closed, so a meeting
+// closed with something mismarked could only be corrected with hand-written
+// SQL. Chair or admin only, enforced in the database too.
+
+let movingItemId = null;
+
+function openMoveItem(itemId) {
+  movingItemId = movingItemId === itemId ? null : itemId;
+  keepingScrollPosition(renderMeetingsOrArchive);
+}
+
+// A move changes two meetings, and either or both may be on screen — the
+// agenda, or an expanded meeting in the archive.
+async function refreshAfterItemMove(from, to) {
+  archiveCache.delete(from);
+  archiveCache.delete(to);
+
+  if (currentSection === "meetings" && meetingSubView === "completed") {
+    await expandArchived(from);
+  } else {
+    await loadAgenda();
+  }
+}
+
+// Redraws whichever of the two renders the item is currently showing in.
+function renderMeetingsOrArchive() {
+  if (currentSection === "meetings" && meetingSubView === "completed") {
+    for (const date of expandedMeetings) expandArchived(date);
+  } else {
+    renderMeetings();
+  }
+}
+
+function buildMoveItemPanel(item) {
+  const panel = document.createElement("div");
+  panel.className = "move-item-panel";
+
+  const label = document.createElement("label");
+  label.textContent = "Move to meeting";
+
+  const input = document.createElement("input");
+  input.type = "date";
+  input.value = item.meeting_date;
+
+  const go = document.createElement("button");
+  go.type = "button";
+  go.textContent = "Move item";
+
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.className = "secondary";
+  cancel.textContent = "Cancel";
+  cancel.addEventListener("click", () => {
+    movingItemId = null;
+    keepingScrollPosition(renderMeetingsOrArchive);
+  });
+
+  const message = document.createElement("span");
+  message.className = "message";
+
+  go.addEventListener("click", async () => {
+    const target = input.value;
+    if (!target) {
+      setMessage(message, "Pick a date.", "error");
+      return;
+    }
+    if (target === item.meeting_date) {
+      movingItemId = null;
+      keepingScrollPosition(renderMeetingsOrArchive);
+      return;
+    }
+
+    go.disabled = true;
+    setMessage(message, "Moving…");
+
+    const { error } = await supabaseClient.rpc("move_agenda_item", {
+      item: item.id,
+      p_to: target,
+    });
+
+    go.disabled = false;
+    if (error) {
+      setMessage(message, error.message, "error");
+      return;
+    }
+
+    movingItemId = null;
+    await refreshAfterItemMove(item.meeting_date, target);
+  });
+
+  panel.append(label, input, go, cancel, message);
+  return panel;
+}
+
 // ---- Reordering by dragging ----
 //
 // Built on pointer events rather than HTML5 drag-and-drop, which does not
@@ -688,6 +785,7 @@ function renderAgendaRow(item, { approved }) {
         actionButton("↑", () => moveItem(item.id, -1)),
         actionButton("↓", () => moveItem(item.id, 1)),
         actionButton("Edit", () => openAgendaForm(item)),
+        actionButton("Move…", () => openMoveItem(item.id)),
         actionButton("Remove", () => returnToSuggestions(item.id))
       );
     }
@@ -774,6 +872,8 @@ function renderAgendaRow(item, { approved }) {
     actionRow.appendChild(makeTask);
 
     body.appendChild(actionRow);
+
+    if (movingItemId === item.id) body.appendChild(buildMoveItemPanel(item));
   }
 
   if (item.completed_at) li.classList.add("item-complete");
@@ -802,8 +902,15 @@ async function completeMeeting() {
     // Left alone these would disappear into the archive undiscussed, which is
     // the wrong default for a board - offer to roll them to next week.
     const plural = unfinished.length === 1;
+    // Named, not just counted. A bare "3 items are not marked discussed" gave
+    // no way to notice that two of the three had in fact been covered — which
+    // is how a meeting ends up carrying forward work it already did.
+    const shown = unfinished.slice(0, 10).map((i) => "• " + i.title).join("\n");
+    const rest = unfinished.length > 10 ? `\n…and ${unfinished.length - 10} more` : "";
+
     carry = confirm(
-      unfinished.length + (plural ? " item is" : " items are") + " not marked discussed.\n\n" +
+      unfinished.length + (plural ? " item is" : " items are") + " not marked discussed:\n\n" +
+      shown + rest + "\n\n" +
       "OK - move " + (plural ? "it" : "them") + " to next week's meeting.\n" +
       "Cancel - archive the meeting with " + (plural ? "it" : "them") + " as-is."
     );
@@ -994,6 +1101,36 @@ function renderArchivedMeeting(container, compiled, date) {
     }
 
     body.appendChild(buildMinutesBlock(item, true));
+
+    // The minutes above stay read-only, but whether an item was discussed —
+    // and which meeting it belongs to — are exactly the things that get
+    // recorded wrong and only noticed later. Correcting them here means a
+    // closed meeting no longer has to be reopened, or repaired with SQL.
+    const fixes = document.createElement("div");
+    fixes.className = "item-actions archive-fixes";
+
+    const done = document.createElement("button");
+    done.type = "button";
+    done.className = "discuss-btn" + (item.completed_at ? " done" : "");
+    done.textContent = item.completed_at
+      ? "✓ Discussed — click to undo"
+      : "Mark as discussed";
+    done.addEventListener("click", () => toggleItemComplete(item.id, !item.completed_at, date));
+    fixes.appendChild(done);
+
+    if (isChair()) {
+      const move = document.createElement("button");
+      move.type = "button";
+      move.className = "skip-btn";
+      move.textContent = "Move…";
+      move.title = "Move this item to a different meeting";
+      move.addEventListener("click", () => openMoveItem(item.id));
+      fixes.appendChild(move);
+    }
+
+    body.appendChild(fixes);
+    if (movingItemId === item.id) body.appendChild(buildMoveItemPanel(item));
+
     li.appendChild(body);
     ol.appendChild(li);
   }

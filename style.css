@@ -1533,6 +1533,27 @@ button:disabled { opacity: 0.6; cursor: default; }
   100% { box-shadow: 0 0 0 3px transparent; }
 }
 
+/* ---- Moving an item to another meeting ---- */
+
+.move-item-panel {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--accent-soft);
+}
+
+.move-item-panel label { font-size: 13px; font-weight: 600; }
+.move-item-panel input[type="date"] { width: auto; margin: 0; }
+.move-item-panel .message { margin: 0; }
+
+/* The archive's own correction row, below read-only minutes. */
+.archive-fixes { margin-top: 10px; }
+
 /* ---- Meeting notes ---- */
 
 .mnotes {
