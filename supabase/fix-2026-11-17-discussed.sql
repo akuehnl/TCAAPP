@@ -1,46 +1,31 @@
 -- One-off repair, not a migration: the 17 Nov 2026 meeting was closed with
 -- three approved items still unmarked, so all three carried forward. Two of
--- them had actually been discussed and belong back on the 17th, marked done.
--- Only the calendar item should have moved.
+-- them had been discussed and belong back on the 17th, marked done. Only the
+-- calendar item should have moved.
 --
--- Run STEP 1 on its own first and read the result. Only run STEP 2 once the
--- titles it is about to move are the two you expect.
+-- Paste the whole file into the Supabase SQL Editor and run it once. The
+-- editor runs it as a single transaction and shows the last result, so the
+-- table you get back is the state afterwards — check it reads the way the
+-- comment at the bottom says it should.
+--
+-- Safe if it has already been run: the second time it finds nothing to move,
+-- changes nothing, and returns the same table.
 
--- ===========================================================================
--- STEP 1 — look before touching anything.
+-- ---------------------------------------------------------------------------
+-- Move the two back to 17 Nov and mark them discussed.
 --
--- Finds the three items wherever they ended up. Check the titles, and note
--- which meeting_date they are sitting on now.
--- ===========================================================================
-
-select
-  meeting_date,
-  status,
-  sort_order,
-  case when completed_at is null then 'NOT discussed' else 'discussed' end as state,
-  title
-from public.agenda_items
-where title ilike '%finance%'
-   or title ilike '%closure%'
-   or title ilike '%open discussion%'
-   or title ilike '%calendar%'
-order by meeting_date, sort_order;
-
--- ===========================================================================
--- STEP 2 — move the two back to 17 Nov and mark them discussed.
+-- Matched on title rather than on ids pasted by hand, and scoped to items
+-- sitting on a date LATER than the 17th — so it can only pull items backwards
+-- out of a future meeting, and can never disturb the meeting it is repairing.
 --
--- Matched on title rather than on a pasted id, and scoped to items sitting on
--- a date LATER than the 17th, so it can only ever pull something backwards
--- out of a future meeting — never disturb the meeting it is repairing.
---
--- sort_order is recomputed to continue after whatever is already on the 17th,
--- so nothing collides. row_number() cannot appear in UPDATE ... SET, hence the
--- CTE and the join back.
+-- sort_order continues after whatever is already on the 17th, so nothing
+-- collides. row_number() cannot appear in UPDATE ... SET, hence the CTE and
+-- the join back to it.
 --
 -- completed_at is only ever read as a yes/no ("was this discussed?"), but it
 -- is set to that evening rather than now() so the archive does not claim the
--- items were discussed a week after the meeting.
--- ===========================================================================
+-- items were discussed a week after the meeting happened.
+-- ---------------------------------------------------------------------------
 
 with base as (
   select coalesce(max(sort_order), -1) as last_slot
@@ -62,15 +47,20 @@ update public.agenda_items a
        completed_at = coalesce(a.completed_at, timestamptz '2026-11-18 01:00+00'),
        sort_order   = base.last_slot + moving.n
   from moving, base
- where a.id = moving.id
-returning a.title, a.meeting_date, a.sort_order, a.completed_at;
+ where a.id = moving.id;
 
--- ===========================================================================
--- STEP 3 — confirm.
+-- ---------------------------------------------------------------------------
+-- What you should see below:
 --
--- The 17th should now list all three of its items, the two repaired ones
--- marked discussed. The later meeting should hold the calendar item alone.
--- ===========================================================================
+--   2026-11-17 ... discussed     October finance review
+--   2026-11-17 ... discussed     Closure to open discussions
+--   2026-11-17 ... (as it was)   ...anything else already on the 17th
+--   2026-11-24 ... NOT discussed Calendar solidification        <- alone
+--
+-- If the two are still on the later date, their titles do not contain
+-- "october finance" or "closure" — send me the real titles and I will adjust
+-- the two patterns above.
+-- ---------------------------------------------------------------------------
 
 select
   meeting_date,
